@@ -4,6 +4,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
 import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
+import { createWeatherSystem } from './weather.js';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
  console.error(error);el('boot').textContent='三维场景未能启动。请用支持 WebGL 2 的 Chrome 或 Edge 打开；也可以查看原始地图。';
@@ -43,6 +44,7 @@ function init(T, PointerLockControls) {
   m.light=surfaceMaterial(T,'stone',{color:0xf2e3c4,roughness:.8});
   m.dorm=surfaceMaterial(T,'plaster',{color:0xdcc3a8,roughness:.91});
   m.asphalt=surfaceMaterial(T,'asphalt',{color:0x434947,roughness:.93});
+  m.windows.userData.nightWindow=true;
   const boxGeometry = new T.BoxGeometry(1,1,1);
   const cylinderGeometry = new T.CylinderGeometry(1,1,1,48);
   const colliders = [];
@@ -222,6 +224,10 @@ function init(T, PointerLockControls) {
   const landing=world(841,1484);
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const pointerAvailable=typeof canvas.requestPointerLock==='function' && matchMedia('(any-pointer: fine)').matches;
+  const weather=createWeatherSystem(T,scene,rendering,{landmarks,canvas,
+    unlock(){if(document.pointerLockElement===canvas)controls.unlock();stopMoving();},
+    onOpen(){el('directory').hidden=true;el('directoryToggle').setAttribute('aria-expanded','false');if(innerWidth<700)el('detail').hidden=true;}
+  });
   function fitDistance() { return Math.max(1,(selected?.id==='doorSouth'?.98:.78)/orbitCam.aspect); }
   function locked() { return mode==='walk' && document.pointerLockElement===canvas; }
   function stopMoving() { held.clear(); velocity.set(0,0,0); accumulator=0; }
@@ -251,10 +257,6 @@ function init(T, PointerLockControls) {
       ? '拖拽旋转 · 滚轮缩放'
       : active ? 'WASD 移动 · E 查看 · Esc 释放' : '点击画面继续漫游';
     canvas.style.cursor=mode==='orbit' ? 'grab' : active ? 'none' : 'pointer';
-    if(mode==='walk') {
-      scene.fog.near=285;
-      scene.fog.far=1100;
-    }
     if (!active) clearTarget();
   }
   function selectOrbit() {
@@ -266,6 +268,7 @@ function init(T, PointerLockControls) {
   }
   function requestWalk() {
     if(!pointerAvailable || lockPending || locked()) return;
+    weather.close();
     cancelDrag();
     showApp();
     mode='walk';
@@ -522,6 +525,7 @@ function init(T, PointerLockControls) {
   canvas.setAttribute('aria-label','校园三维画面，方向键旋转，Home 复位，加减号缩放；建筑也可通过目录选择。');
   function notify(text) { clearTimeout(toastTimer);el('toast').textContent=text;el('toast').hidden=false;toastTimer=setTimeout(()=>el('toast').hidden=true,3500); }
   function toggleDirectory(open) {
+    if(open)weather.close();
     el('directory').hidden=!open;el('directoryToggle').setAttribute('aria-expanded',String(open));
     if(open && innerWidth<700)el('detail').hidden=true;
     if(open)el('search').focus();else el('directoryToggle').focus();
@@ -538,6 +542,7 @@ function init(T, PointerLockControls) {
     el('resultCount').textContent=matches.length+' 处地点';el('empty').hidden=matches.length>0;
   }
   function focusEntry(entry,fromTour=false) {
+    if(innerWidth<700)weather.close();
     if(!fromTour)stopTour();
     selectOrbit();selected=entry;
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
@@ -613,11 +618,12 @@ function init(T, PointerLockControls) {
   renderList();
   el('startSouthGate').addEventListener('click',()=>focusEntry(landmarks.find(e=>e.id==='doorSouth')));
   if(location.hash==='#south-gate')focusEntry(landmarks.find(e=>e.id==='doorSouth'));
-  window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
+  window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality,weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
 
   // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
   function resize() {
     const w=Math.max(1,innerWidth), h=Math.max(1,innerHeight);
+    if(w<700&&!el('weatherPanel').hidden)el('detail').hidden=true;
     renderer.setPixelRatio(Math.min(devicePixelRatio||1,w<700?1.35:1.65));
     renderer.setSize(w,h);
     rendering.resize(w,h);
@@ -672,7 +678,10 @@ function init(T, PointerLockControls) {
       lastMap=now;
     }
     const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<180:Math.hypot(walkCam.position.x-54.45,walkCam.position.z-297)<85;
-    rendering.render(mode==='orbit'?orbitCam:walkCam,nearGate);
+    const activeCamera=mode==='orbit'?orbitCam:walkCam;
+    const fit=mode==='orbit'?fitDistance():1;
+    weather.update(elapsed,activeCamera,nearGate,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});
+    rendering.render(activeCamera,nearGate);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

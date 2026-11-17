@@ -20,8 +20,22 @@
   <nav id="hud" class="hud" aria-label="校园漫游控制" hidden>
     <div class="modes"><button id="walk" type="button" aria-pressed="false">第一人称</button><button id="orbit" type="button" aria-pressed="true">俯瞰全校</button></div>
     <div class="zoom" id="zoom"><button id="farther" type="button" aria-label="缩小">−</button><button id="nearer" type="button" aria-label="放大">+</button></div>
-    <div class="tools"><button id="directoryToggle" type="button" aria-controls="directory" aria-expanded="false">建筑目录</button><button id="referenceToggle" type="button">原图对照</button><button id="reset" type="button">复位</button><button id="labelsToggle" type="button" aria-pressed="true">标注</button><button id="rotateToggle" type="button" aria-pressed="false">自转</button><button id="tour" type="button" aria-pressed="false">地标巡览</button></div><span id="hint" aria-live="polite">拖拽旋转 · 滚轮缩放</span>
+    <div class="tools"><button id="directoryToggle" type="button" aria-controls="directory" aria-expanded="false">建筑目录</button><button id="weatherToggle" type="button" aria-label="打开时间与天气控制" aria-controls="weatherPanel" aria-expanded="false">天气 · 14:00</button><button id="referenceToggle" type="button">原图对照</button><button id="reset" type="button">复位</button><button id="labelsToggle" type="button" aria-pressed="true">标注</button><button id="rotateToggle" type="button" aria-pressed="false">自转</button><button id="tour" type="button" aria-pressed="false">地标巡览</button></div><span id="hint" aria-live="polite">拖拽旋转 · 滚轮缩放</span>
   </nav>
+  <aside id="weatherPanel" class="weather-panel" hidden aria-labelledby="weatherTitle">
+    <div class="panel-heading"><h2 id="weatherTitle">时间与天气</h2><button id="weatherClose" type="button" aria-label="关闭时间与天气">关闭</button></div>
+    <p id="weatherSummary" class="weather-summary">14:00 · 晴天</p>
+    <div class="weather-label"><label for="timeSlider">场景时间</label><time id="timeValue" datetime="14:00">14:00</time></div>
+    <input id="timeSlider" type="range" min="0" max="1435" step="5" value="840" aria-valuetext="14:00">
+    <div id="timePresets" class="time-presets" role="group" aria-label="时段快捷选择"><button type="button" data-minutes="390" aria-pressed="false">清晨</button><button type="button" data-minutes="720" aria-pressed="false">正午</button><button type="button" data-minutes="1050" aria-pressed="false">黄昏</button><button type="button" data-minutes="1260" aria-pressed="false">夜晚</button></div>
+    <div class="time-playback"><button id="timePlay" type="button" aria-pressed="false">播放昼夜</button><div><label for="timeCycle">一天时长</label><select id="timeCycle"><option value="60">1 分钟</option><option value="300" selected>5 分钟</option><option value="900">15 分钟</option></select></div></div>
+    <div class="weather-condition"><label for="weatherType">天气状况</label><select id="weatherType"><option value="clear">晴天</option><option value="cloudy">多云</option><option value="overcast">阴天</option><option value="rain">雨天</option><option value="snow">雪天</option><option value="fog">雾天</option></select></div>
+    <div class="weather-label"><label for="weatherIntensity">天气强度</label><output id="intensityValue" for="weatherIntensity">65%</output></div>
+    <input id="weatherIntensity" type="range" min="0" max="100" step="5" value="65" disabled>
+    <label class="particle-toggle"><input id="weatherParticles" type="checkbox" checked disabled><span>显示雨雪粒子</span></label>
+    <p class="weather-note">场景效果模拟，可自由设定。雨雪时可关闭粒子；系统减少动态效果开启时，粒子保持静止。</p>
+    <button id="weatherReset" class="weather-reset" type="button">恢复晴天下午</button>
+  </aside>
   <aside id="directory" class="directory" hidden aria-labelledby="directoryTitle">
     <div class="panel-heading"><h2 id="directoryTitle">探索校园</h2><button id="directoryClose" type="button" aria-label="关闭建筑目录">关闭</button></div>
     <label class="search-label" for="search">搜索建筑或公寓</label>

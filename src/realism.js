@@ -72,12 +72,24 @@ export function setupRealisticRendering(T,renderer,scene) {
   const direction=new T.Vector3(-.6,.77,.5).normalize();
   const sky=new Sky();sky.scale.setScalar(2400);
   const uniforms=sky.material.uniforms;
+  // 夜色覆盖低太阳散射；日间沿用解析天空与程序化云层。
+  uniforms.campusNight={value:0};uniforms.campusCloud={value:0};
+  sky.material.fragmentShader=sky.material.fragmentShader.replace('varying vec3 vWorldPosition;',
+    'varying vec3 vWorldPosition;\nuniform float campusNight;\nuniform float campusCloud;');
+  sky.material.fragmentShader=sky.material.fragmentShader.replace('gl_FragColor = vec4( texColor, 1.0 );',`
+    vec3 campusRay=normalize(vWorldPosition-cameraPosition);
+    vec3 campusNightColor=mix(vec3(.018,.028,.052),vec3(.002,.005,.014),smoothstep(-.1,.7,campusRay.y));
+    float campusStars=step(.9989,fract(sin(dot(floor(campusRay.xz/max(.12,campusRay.y)*650.),vec2(12.9898,78.233)))*43758.5453));
+    campusNightColor+=campusStars*.24*smoothstep(.08,.4,campusRay.y)*(1.-campusCloud);
+    texColor=mix(texColor,campusNightColor,campusNight);
+    texColor=mix(texColor,mix(vec3(.32,.38,.44),vec3(.012,.019,.03),campusNight),campusCloud*.6);
+    gl_FragColor=vec4(texColor,1.);`);
   uniforms.turbidity.value=3.2;uniforms.rayleigh.value=1.7;uniforms.mieCoefficient.value=.004;uniforms.mieDirectionalG.value=.78;
   uniforms.sunPosition.value.copy(direction);uniforms.showSunDisc.value=false;
   const envScene=new T.Scene();envScene.add(sky);
-  const pmrem=new T.PMREMGenerator(renderer);const environment=pmrem.fromScene(envScene,.035,.1,5000);
+  const pmrem=new T.PMREMGenerator(renderer);let environment=pmrem.fromScene(envScene,.035,.1,5000);
   scene.environment=environment.texture;scene.environmentIntensity=.075;
-  uniforms.showSunDisc.value=true;scene.add(sky);scene.background=null;pmrem.dispose();
+  uniforms.showSunDisc.value=true;scene.add(sky);scene.background=null;
   scene.fog.color.setHex(0xc7d6dc);
   const sun=new T.DirectionalLight(0xfff2df,3.6);sun.castShadow=true;
   sun.shadow.mapSize.set(3072,3072);sun.shadow.bias=-.000035;sun.shadow.normalBias=.025;sun.shadow.radius=2;
@@ -85,11 +97,47 @@ export function setupRealisticRendering(T,renderer,scene) {
   const fill=new T.HemisphereLight(0xd1e5fb,0x716951,.35);scene.add(sun,sun.target,fill);
   const target=new T.Vector3(),gate=world(841,1510);
   let detailed=null,cssWidth=1,cssHeight=1,composer=null,ao=null,renderPass=null;
+  let atmosphere=null,appliedAtmosphere=null,environmentKey='',environmentAt=-Infinity,shadowDirty=false,lastShadowAt=-Infinity;
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+  const cool=new T.Color(),warm=new T.Color(),fogDay=new T.Color(0xc7d6dc),fogNight=new T.Color(0x111e30);
+  function moveSun() {
+    sun.target.position.copy(target);sun.position.copy(target).addScaledVector(direction,470);
+    sun.target.updateMatrixWorld();sun.updateMatrixWorld();shadowDirty=true;
+  }
+  function setAtmosphere(value) {
+    const changed=!appliedAtmosphere||Math.abs(value.minutes-appliedAtmosphere.minutes)>.3||value.type!==appliedAtmosphere.type||value.intensity!==appliedAtmosphere.intensity;
+    atmosphere=value;if(!changed)return;appliedAtmosphere=value;
+    direction.fromArray(value.direction).normalize();
+    // 夜晚把方向光作为弱月光使用，避免把阴影相机放到地底。
+    if(direction.y<.06)direction.set(-direction.x,Math.max(.24,-direction.y),-direction.z).normalize();
+    uniforms.sunPosition.value.fromArray(value.direction).normalize();
+    uniforms.campusNight.value=value.night;uniforms.campusCloud.value=value.cloud;
+    uniforms.cloudCoverage.value=value.cloud;uniforms.cloudDensity.value=.35+value.cloud*.5;uniforms.cloudScale.value=.0012;
+    uniforms.turbidity.value=3.2+value.haze*5;uniforms.showSunDisc.value=value.cloud<.75&&value.altitude>0;
+    sun.intensity=value.sun+.13*value.night;
+    sun.color.copy(cool.setHex(0xfff2df).lerp(warm.setHex(0xffad60),value.warm*.8));
+    if(value.night>.5)sun.color.setHex(0x9dbce9);
+    fill.intensity=.16+.28*value.day+value.cloud*.2*value.day;
+    fill.color.setHex(value.night>.5?0x7c9dc9:0xd1e5fb);
+    scene.environmentIntensity=.018+.057*value.day;
+    scene.fog.color.copy(fogNight).lerp(fogDay,value.day).lerp(cool.setHex(value.night>.5?0x1d2b38:0xaebbc0),value.haze*.55);
+    renderer.toneMappingExposure=.9+value.night*.2;moveSun();
+  }
+  function updateEnvironment(now) {
+    if(!atmosphere)return;
+    const key=`${Math.floor(atmosphere.minutes/30)}-${atmosphere.type}-${Math.round(atmosphere.intensity*4)}`;
+    if(key===environmentKey||now-environmentAt<1800)return;
+    environmentKey=key;environmentAt=now;
+    const disc=uniforms.showSunDisc.value;uniforms.showSunDisc.value=false;
+    const parent=sky.parent;envScene.add(sky);
+    const next=pmrem.fromScene(envScene,.035,.1,5000);parent.add(sky);
+    scene.environment=next.texture;environment.dispose();environment=next;uniforms.showSunDisc.value=disc;
+  }
   const supportsAO=renderer.extensions.has('EXT_color_buffer_float');
   function setShadowArea(close) {
     if(detailed===close)return;detailed=close;
     target.set(close?gate.x:-12,close?4:0,close?gate.z:0);
-    sun.target.position.copy(target);sun.position.copy(target).addScaledVector(direction,470);
+    moveSun();
     const span=close?66:390;
     sun.shadow.camera.left=sun.shadow.camera.bottom=-span;sun.shadow.camera.right=sun.shadow.camera.top=span;
     sun.shadow.camera.updateProjectionMatrix();sun.target.updateMatrixWorld();sun.updateMatrixWorld();renderer.shadowMap.needsUpdate=true;
@@ -108,10 +156,12 @@ export function setupRealisticRendering(T,renderer,scene) {
   }
   setShadowArea(false);
   return {
-    resize,
+    resize,setAtmosphere,
     render(camera,close) {
       renderer.info.reset();
+      const now=performance.now();uniforms.time.value=reducedMotion.matches?0:now/1000;updateEnvironment(now);
       setShadowArea(close);
+      if(shadowDirty&&now-lastShadowAt>150){renderer.shadowMap.needsUpdate=true;shadowDirty=false;lastShadowAt=now;}
       if(close&&cssWidth>=700&&supportsAO){ensureComposer(camera);renderPass.camera=camera;ao.camera=camera;composer.render();}
       else renderer.render(scene,camera);
     },

@@ -22,11 +22,13 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     road:surfaceMaterial(T,'asphalt',{color:0x434947,roughness:.93}),
     paving:surfaceMaterial(T,'paving',{color:0xd4cfbb,roughness:.83}),
     white:new T.MeshStandardMaterial({color:0xf1eee1,roughness:.8}),
+    lamp:new T.MeshStandardMaterial({color:0xf1eee1,roughness:.55}),
     yellow:new T.MeshStandardMaterial({color:0xd8b759,roughness:.85}),
     red:new T.MeshStandardMaterial({color:0xaf5541,roughness:.8}),
     hedge:new T.MeshStandardMaterial({color:0x536e43,roughness:1}),
     steel:surfaceMaterial(T,'metal',{color:0xc6cecc,roughness:.26,metalness:.78})
   };
+  materials.lamp.userData.nightLamp=true;
   const buckets=new Map();
   function emit(geometry,material,transform,cast=true) {
     const geo=geometry.index?geometry.toNonIndexed():geometry;
@@ -162,8 +164,8 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     cylinder(lx,.31,lz,.2,.12,10.2,materials.steel,12);
     rod([lx,9.8,lz],[lx-side*1.9,10.5,lz],.09,materials.steel);
     rod([lx,7.8,lz],[lx+side*1.45,8.35,lz],.08,materials.steel);
-    block(lx-side*2.12,10.43,lz,1.35,.17,.48,materials.white);
-    block(lx+side*1.6,8.28,lz,1.15,.15,.42,materials.white);
+    block(lx-side*2.12,10.43,lz,1.35,.17,.48,materials.lamp);
+    block(lx+side*1.6,8.28,lz,1.15,.15,.42,materials.lamp);
     for(const z of [16,23]) {
       block(side*7.25,.3,z,.72,.1,.72,materials.iron,false);
       cylinder(side*7.25,.4,z,.29,.065,.85,materials.red,16);

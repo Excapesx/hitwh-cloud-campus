@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { buildings,inside,walkable,world,roadLines,tourIds } from '../src/campus-data.js';
 import { southGateSolids } from '../src/south-gate.js';
+import { normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from '../src/weather-state.js';
 const ids=new Set();
 for(const b of buildings){assert(!ids.has(b.id),'Duplicate building '+b.id);ids.add(b.id);if(b.kind!=='gate')assert(inside(b.x,b.z),'Building outside campus: '+b.id);assert(b.w>0&&b.d>0,'Invalid footprint '+b.id);}
 for(const id of tourIds)assert(ids.has(id),'Unknown tour stop '+id);
@@ -18,4 +19,16 @@ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 assert(!html.includes('__CAMPUS_MAP__')&&!html.includes('<!--APP-->'),'Unresolved build placeholder');
 assert(!/<script[^>]+src=|<link[^>]+href=|https:\/\/cdn\./i.test(html),'Delivery depends on external resources');
 assert(html.includes('data:image/png;base64,'),'Missing embedded reference map');
-console.log(`Checks passed: ${buildings.length} unique in-bounds places, ${roadLines.length} roads, tour references, relative layout and offline HTML.`);
+assert.equal(formatTime(1440),'00:00');assert.equal(formatTime(1435),'23:55');
+assert.equal(advanceTime(1430,10,60),230,'Clock must wrap at midnight');
+assert.equal(advanceTime(0,300,300),0,'Full cycle should return to midnight');
+assert.equal(normalizeWeather(null).type,'clear');
+assert.deepEqual(normalizeWeather({minutes:-5,type:'invalid',intensity:10,cycle:0,playing:'yes',particles:false}),{minutes:1435,type:'clear',intensity:1,cycle:300,playing:false,particles:false});
+assert.equal(atmosphereFor({minutes:0}).night,1);assert.equal(atmosphereFor({minutes:720}).night,0);
+assert.equal(atmosphereFor({type:'rain',intensity:0}).wet,0);assert.equal(atmosphereFor({type:'snow',intensity:0}).snow,0);assert.equal(atmosphereFor({type:'fog',intensity:0}).haze,0);
+for(const type of Object.keys(weatherTypes))for(const minutes of [0,360,390,720,1050,1080,1435]) {
+  const a=atmosphereFor({type,minutes});
+  assert(a.direction.every(Number.isFinite)&&a.sun>=0&&a.day>=0&&a.day<=1&&a.haze>=0&&a.haze<=1,'Invalid atmosphere');
+  assert.equal(a.wet>0,type==='rain');assert.equal(a.snow>0,type==='snow');
+}
+console.log(`Checks passed: ${buildings.length} places, ${roadLines.length} roads, layout, offline HTML, weather validation and midnight/cycle boundaries.`);
