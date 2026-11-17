@@ -1,0 +1,947 @@
+<!doctype html>
+<!--
+  项目名：哈工威·云上校园
+  运行方式：保存为 UTF-8 编码的 .html 文件，联网后用 Chrome 或 Edge 双击打开。
+  操作：第一人称 WASD 移动，鼠标环顾，E 查看建筑，Esc 释放鼠标。
+        俯瞰时拖拽旋转，滚轮或界面按钮缩放。手机可触摸拖拽俯瞰。
+  校园模型为相对位置还原，非测绘精度。以南门—主楼为基准，其余点位、
+  道路与地形按题述方位近似。建筑外形、门头及室外地貌均为程序化示意。
+  校区楼名参考：威海市教育局考试公告
+  https://jyj.weihai.gov.cn/art/2021/12/20/art_63036_2762153.html
+  主楼形制与高度参考：哈工大《图话百年》校园主楼报道
+  https://www.sohu.com/a/401134859_120492671
+  两处餐厅名称参考：半岛网校园餐饮报道
+  https://news.bandao.cn/news_html/201711/20171114/news_20171114_2780549.shtml
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#153c35">
+<title>哈工威·云上校园</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink:#15372f; --muted:#4e675e; --accent:#175747; --deep:#133b32;
+    --paper:#fbfcf3; --panel:rgba(251,252,243,.95); --line:#dce5d9;
+    --shadow:0 12px 40px #152f3326; --gutter:clamp(12px, 2.2vw, 32px);
+    font-family:"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+  }
+  *,*::before,*::after { box-sizing:border-box; }
+  html,body { margin:0; width:100%; height:100%; overflow:hidden; background:#c9dedf; color:var(--ink); }
+  [hidden] { display:none!important; }
+  button { font:inherit; cursor:pointer; color:inherit; }
+  button:disabled { cursor:default; opacity:.55; }
+  button:focus-visible { outline:3px solid #d9a64d; outline-offset:3px; }
+  #world,#world canvas,#labels { position:absolute; inset:0; width:100%; height:100%; }
+  #world canvas { display:block; touch-action:none; cursor:grab; }
+  #world canvas.dragging { cursor:grabbing; }
+  #labels { pointer-events:none; overflow:hidden; }
+  .place {
+    --label:#245c4e; position:absolute; top:0; left:0; white-space:nowrap;
+    display:flex; align-items:center; gap:6px; padding:4px 8px 4px 5px; border-radius:5px;
+    background:#fcfcf2ed; box-shadow:0 2px 10px #203b352b; color:#244138;
+    font-size:11px; line-height:1.35; font-weight:700;
+  }
+  .place i { font-style:normal; background:var(--label); color:white; border-radius:3px; padding:1px 4px; font-size:9px; min-width:13px; text-align:center; }
+  .place[data-kind="life"] { --label:#92523a; }
+  .place[data-kind="sport"] { --label:#365d73; }
+  .place[data-kind="gate"] { --label:#686044; }
+  header {
+    position:absolute; z-index:2; left:var(--gutter); top:max(var(--gutter),env(safe-area-inset-top));
+    display:flex; align-items:center; gap:12px; padding:10px 15px 10px 10px;
+    border:1px solid #fff9; border-radius:9px; background:var(--panel); box-shadow:var(--shadow);
+    pointer-events:none;
+  }
+  .mark { width:35px; height:35px; display:grid; place-content:center; background:var(--deep); color:#fff9e3; border-radius:5px; font:700 12px Georgia,serif; letter-spacing:.08em; }
+  .brand { display:grid; gap:3px; }
+  .brand strong { font-size:15px; letter-spacing:.035em; }
+  .brand small { color:var(--muted); font:700 9px system-ui,sans-serif; letter-spacing:.17em; }
+  .map {
+    position:absolute; z-index:2; top:max(var(--gutter),env(safe-area-inset-top)); right:var(--gutter);
+    width:168px; padding:9px; background:var(--panel); box-shadow:var(--shadow);
+    border:1px solid #fff9; border-radius:9px; pointer-events:none;
+  }
+  .map-title { display:flex; align-items:center; justify-content:space-between; padding:0 1px 7px; font-size:11px; font-weight:750; }
+  .map-title b { color:var(--muted); font:700 10px system-ui; letter-spacing:.08em; }
+  #map { width:100%; height:auto; display:block; border-radius:4px; }
+  .hud {
+    position:absolute; z-index:3; left:50%; bottom:max(22px,env(safe-area-inset-bottom)); transform:translateX(-50%);
+    display:flex; align-items:center; gap:10px; width:max-content; max-width:calc(100% - 2 * var(--gutter));
+    padding:7px; border:1px solid #fff8; border-radius:9px; background:var(--panel); box-shadow:var(--shadow);
+  }
+  .modes,.zoom { display:flex; gap:3px; flex:none; }
+  .modes button,.zoom button { min-height:34px; padding:5px 10px; border:0; border-radius:5px; background:transparent; font-size:12px; font-weight:750; }
+  .modes button:hover:not(:disabled),.zoom button:hover { background:#e1ede0; }
+  .modes button[aria-pressed="true"] { background:var(--deep); color:#fffbed; }
+  .zoom { border-left:1px solid var(--line); padding-left:6px; }
+  .zoom button { min-width:32px; padding:2px; font-size:18px; line-height:1; }
+  #hint { color:var(--muted); padding:0 5px 0 0; font-size:11px; white-space:nowrap; }
+  .crosshair { position:absolute; z-index:2; top:50%; left:50%; width:20px; height:20px; transform:translate(-50%,-50%); color:#fff; pointer-events:none; }
+  .crosshair::before,.crosshair::after { content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:currentColor; border-radius:2px; box-shadow:0 0 3px #132b22; }
+  .crosshair::before { width:17px; height:2px; }
+  .crosshair::after { width:2px; height:17px; }
+  .crosshair.hit { color:#62ff96; }
+  #aim { position:absolute; z-index:2; left:50%; top:calc(50% + 21px); transform:translateX(-50%); border-radius:4px; padding:5px 8px; color:#fff; background:#15372eea; font-size:11px; white-space:nowrap; pointer-events:none; }
+  .card {
+    position:absolute; z-index:2; left:var(--gutter); bottom:82px; width:min(320px,calc(100vw - 2 * var(--gutter)));
+    padding:17px 19px; border-left:4px solid #387c5f; border-radius:7px;
+    background:var(--panel); box-shadow:var(--shadow); pointer-events:none;
+  }
+  .card h2 { margin:0 0 6px; font-size:20px; }
+  .card p { margin:0; font-size:13px; line-height:1.6; color:var(--muted); }
+  .veil {
+    position:absolute; z-index:5; inset:0; display:flex; align-items:center; padding:var(--gutter);
+    padding-top:max(var(--gutter),env(safe-area-inset-top)); overflow:auto;
+    background:linear-gradient(90deg,#233e464d 0%,#1d3b421e 53%,transparent 100%);
+  }
+  .intro {
+    width:min(414px,100%); margin:auto auto auto clamp(0px,4vw,74px); padding:clamp(23px,4vw,38px);
+    background:var(--panel); border:1px solid #fff; border-radius:13px; box-shadow:0 22px 70px #20353540;
+  }
+  .eyebrow { display:flex; align-items:center; gap:9px; color:#345c4d; font-size:11px; font-weight:750; letter-spacing:.14em; }
+  .eyebrow::before { content:""; width:20px; height:2px; background:#438263; }
+  .intro h1 { font-size:clamp(24px,5.7vw,39px); margin:11px 0 10px; line-height:1.16; letter-spacing:-.06em; }
+  .intro p { margin:0; color:var(--muted); font-size:13px; line-height:1.65; }
+  .intro dl { margin:19px 0 21px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:9px 0; display:grid; grid-template-columns:max-content 1fr; gap:8px 12px; font-size:11px; line-height:1.4; }
+  .intro dt { font-weight:800; }
+  .intro dd { margin:0; color:var(--muted); }
+  .start-actions { display:grid; gap:8px; }
+  .start-actions button { border:1px solid #afc6b7; padding:10px 12px; border-radius:6px; background:transparent; font-weight:750; font-size:13px; }
+  .start-actions button:first-child { background:var(--deep); border-color:var(--deep); color:#fffbed; }
+  .start-actions button:hover:not(:disabled) { filter:brightness(1.16); }
+  #boot { margin-top:9px; font-size:11px; color:#7f492d; }
+  @media (max-width:700px) {
+    .map { width:102px; padding:6px; }
+    .map-title { padding-bottom:4px; font-size:9px; }
+    #hint { display:none; }
+    .veil { background:linear-gradient(0deg,#233e4660,transparent 75%); }
+    .intro { margin:auto auto max(18px,env(safe-area-inset-bottom)); padding:19px; }
+    .intro h1 { margin:8px 0; }
+    .intro dl { margin:12px 0; }
+    .place { font-size:9px; gap:4px; padding:3px 5px 3px 3px; }
+    .place i { font-size:8px; }
+  }
+  @media (max-height:460px) {
+    .intro { margin:auto auto auto 0; padding:14px; }
+    .intro h1 { margin:5px 0; }
+    .intro dl { margin:8px 0; }
+    .start-actions { grid-template-columns:1fr 1fr; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="world" aria-label="哈工大威海三维校园"></div>
+  <div id="labels" aria-hidden="true" hidden></div>
+  <header hidden id="brand"><span class="mark" aria-hidden="true">HIT</span><div class="brand"><strong>哈工威·云上校园</strong><small>HIT WEIHAI</small></div></header>
+  <aside class="map" id="mapPanel" hidden aria-label="小地图，正北朝上"><div class="map-title"><span>校园导览</span><b>↑ N</b></div><canvas id="map" width="320" height="276" aria-hidden="true"></canvas></aside>
+  <div id="crosshair" class="crosshair" aria-hidden="true" hidden></div>
+  <div id="aim" aria-hidden="true" hidden></div>
+  <article class="card" id="card" aria-live="polite" hidden><h2 id="cardTitle"></h2><p id="cardDescription"></p></article>
+  <nav id="hud" class="hud" aria-label="校园漫游控制" hidden>
+    <div class="modes"><button id="walk" type="button" aria-pressed="false">第一人称</button><button id="orbit" type="button" aria-pressed="true">俯瞰全校</button></div>
+    <div class="zoom" id="zoom"><button id="farther" type="button" aria-label="缩小">−</button><button id="nearer" type="button" aria-label="放大">+</button></div>
+    <span id="hint" aria-live="polite">拖拽旋转 · 滚轮缩放</span>
+  </nav>
+  <div class="veil" id="start">
+    <main class="intro" aria-labelledby="title">
+      <div class="eyebrow">哈尔滨工业大学（威海）</div>
+      <h1 id="title">哈工威·云上校园</h1>
+      <p>从南门沿中轴走向主楼，或俯瞰教学楼、山上公寓与东侧运动区。</p>
+      <dl><dt>第一人称</dt><dd>WASD 移动 · 鼠标环顾 · E 查看建筑 · Esc 释放鼠标</dd><dt>俯瞰全校</dt><dd>拖拽旋转 · 滚轮或按钮缩放 · 松手后缓慢旋转</dd></dl>
+      <div class="start-actions"><button id="startWalk" type="button" disabled>进入第一人称漫游</button><button id="startOrbit" type="button" disabled>俯瞰全校</button></div>
+      <p id="boot" role="status">正在加载三维校园…</p>
+    </main>
+  </div>
+
+<script type="module">
+const el = id => document.getElementById(id);
+try {
+  const [THREE, { PointerLockControls }] = await Promise.all([
+    import('three'), import('three/addons/controls/PointerLockControls.js')
+  ]);
+  init(THREE, PointerLockControls);
+} catch (error) {
+  console.error(error);
+  el('boot').textContent = '三维校园加载失败。请确认浏览器已启用 WebGL、能连接 Three.js CDN，然后刷新页面。';
+}
+
+function init(T, PointerLockControls) {
+  // ── 场景 ── 1 场景单位 = 1 米。+X 向东、-Z 向北。
+  const bounds = { minX:-223, maxX:223, minZ:-199, maxZ:196 };
+  const scene = new T.Scene();
+  scene.background = new T.Color(0xc8dfe4);
+  scene.fog = new T.Fog(0xc8dfe4, 285, 1100);
+  const walkCam = new T.PerspectiveCamera(67, 1, .12, 1250);
+  const orbitCam = new T.PerspectiveCamera(42, 1, 14, 3250);
+  const renderer = new T.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.20;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+  // 光源与场景静止，只需生成一次阴影贴图。
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
+  const canvas = renderer.domElement;
+  el('world').append(canvas);
+  const sun = new T.DirectionalLight(0xfff2d5, 2.35);
+  sun.position.set(-210, 300, 120);
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -345;
+  sun.shadow.camera.right = sun.shadow.camera.top = 345;
+  sun.shadow.camera.near = 10;
+  sun.shadow.camera.far = 850;
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.normalBias = .29;
+  sun.shadow.bias = -.00014;
+  sun.castShadow = true;
+  scene.add(sun, new T.HemisphereLight(0xe9f7ff, 0x999778, 2.05));
+
+  // ── 材质 ── 用共享几何与材质建模，窗格按材质批量实例化。
+  const mat = (color, options) => new T.MeshStandardMaterial({ color, roughness:.87, ...options });
+  const m = {
+    terrain:mat(0xffffff,{ vertexColors:true }), asphalt:mat(0x505c5a), curb:mat(0xa8b3a0),
+    path:mat(0xe4dac2), stone:mat(0xece0c8), line:mat(0xe9ead6), grass:mat(0x799b61),
+    deepGrass:mat(0x638752), water:mat(0x65a7b3,{ roughness:.53 }), wall:mat(0xe5cda8),
+    light:mat(0xf2e3c4), dorm:mat(0xdcc3a8), clay:mat(0xbe896f), dark:mat(0x394b53),
+    roof:mat(0x3c5054), trim:mat(0xa9b7b0), blue:mat(0x78959b),
+    windows:mat(0x416873,{ roughness:.41, metalness:.12 }),
+    glass:mat(0x79b9c4,{ transparent:true, opacity:.54, roughness:.23, metalness:.12, depthWrite:false }),
+    track:mat(0xa65d49), brass:mat(0xe3ca8f,{ metalness:.2 }), bark:mat(0x745e48),
+    needles:mat(0xffffff,{ roughness:1 })
+  };
+  const boxGeometry = new T.BoxGeometry(1,1,1);
+  const cylinderGeometry = new T.CylinderGeometry(1,1,1,48);
+  const colliders = [];
+  const landmarks = [];
+  const rayMeshes = [];
+  const windowPieces = [];
+  const roads = [];
+  function mesh(geometry, material, x, y, z, cast = true) {
+    const obj = new T.Mesh(geometry, material);
+    obj.position.set(x,y,z);
+    obj.castShadow = cast;
+    obj.receiveShadow = true;
+    scene.add(obj);
+    return obj;
+  }
+  function box(x,y,z,w,h,d,material,cast = true) {
+    const obj = mesh(boxGeometry,material,x,y+h/2,z,cast);
+    obj.scale.set(w,h,d);
+    return obj;
+  }
+  function disc(x,y,z,r,h,material,cast = false) {
+    const obj = mesh(cylinderGeometry,material,x,y+h/2,z,cast);
+    obj.scale.set(r,h,r);
+    return obj;
+  }
+
+  // ── 地面 ── 使用同一高度函数绘制地形、路面与行人脚底。
+  // 西北台地抬升 12 米；坡面使用分段线性插值，楼址位于平坦段。
+  const clamp = T.MathUtils.clamp;
+  function height(x,z) {
+    return 12 * Math.min(clamp((-x-90)/30,0,1),clamp((-z+58)/56,0,1));
+  }
+  const terrain = new T.PlaneGeometry(596,510,149,102);
+  terrain.rotateX(-Math.PI/2);
+  const terrainPos = terrain.attributes.position;
+  const terrainColors = new Float32Array(terrainPos.count*3);
+  const green = new T.Color();
+  for (let i=0; i<terrainPos.count; i++) {
+    const x=terrainPos.getX(i), z=terrainPos.getZ(i);
+    const y=height(x,z);
+    terrainPos.setY(i,y);
+    const variation = .018*Math.sin(x*.052)*Math.cos(z*.063) + .012*Math.sin((x-z)*.13);
+    green.setHex(y>6 ? 0x769563 : 0x8daa70).offsetHSL(0,0,variation);
+    green.toArray(terrainColors,i*3);
+  }
+  terrain.setAttribute('color',new T.BufferAttribute(terrainColors,3));
+  terrain.computeVertexNormals();
+  mesh(terrain,m.terrain,0,0,0,false);
+  // 封住地表边缘，使高地从北侧俯视时仍与底座相接。
+  const edge=[];
+  function skirt(ax,az,bx,bz) {
+    const a=[ax,height(ax,az),az], b=[bx,height(bx,bz),bz];
+    const lowA=[ax,-4,az], lowB=[bx,-4,bz];
+    for(const v of [a,b,lowA,b,lowB,lowA]) edge.push(...v);
+  }
+  for(let x=-298; x<298; x+=4) {
+    skirt(x,-255,x+4,-255);
+    skirt(x+4,255,x,255);
+  }
+  for(let z=-255; z<255; z+=5) {
+    skirt(298,z,298,z+5);
+    skirt(-298,z+5,-298,z);
+  }
+  const skirtGeometry=new T.BufferGeometry();
+  skirtGeometry.setAttribute('position',new T.Float32BufferAttribute(edge,3));
+  skirtGeometry.computeVertexNormals();
+  mesh(skirtGeometry,m.deepGrass,0,0,0,false);
+  box(0,-4.4,-1140,3600,1,1805,m.water,false);
+
+  // 水平铺装依地形切小网格，略抬高以避免与地表深度冲突。
+  function paving(x,z,w,d,material,lift=.09) {
+    const geo = new T.PlaneGeometry(w,d,Math.ceil(w/3),Math.ceil(d/3));
+    geo.rotateX(-Math.PI/2);
+    const p = geo.attributes.position;
+    for (let i=0; i<p.count; i++) p.setY(i,height(x+p.getX(i),z+p.getZ(i))+lift);
+    geo.computeVertexNormals();
+    return mesh(geo,material,x,0,z,false);
+  }
+  function road(x,z,w,d) {
+    roads.push({x,z,w,d});
+    paving(x,z,w+2,d+2,m.curb,.16);
+    paving(x,z,w,d,m.asphalt,.24);
+  }
+  road(0,188,458,13); road(0,69,448,10); road(0,-113,447,11);
+  road(-89,31,10,314); road(90,31,10,314);
+  road(-213,-31,9,172); road(212,-31,9,172); road(9,-162,11,94);
+  paving(0,96,18,176,m.path,.31);
+  paving(0,-10,31,31,m.path,.29);
+  paving(-55,-36,79,6,m.path,.29); paving(55,-36,79,6,m.path,.29);
+  paving(-161,-88,90,5,m.path,.31); paving(-164,-71,6,35,m.path,.32);
+  paving(-154,120,112,6,m.path,.29); paving(145,104,109,6,m.path,.29);
+  disc(0,.12,-18,32,.24,m.stone);
+  disc(0,.37,-18,9.1,.13,m.trim);
+  disc(0,.5,-18,7.8,.11,m.water);
+  disc(0,.61,-18,1.8,.7,m.stone,true);
+  // 喷泉外围可走，池心和池沿作为低矮障碍。
+  addCollider(0,.12,-18,11,.55,11);
+  for (const x of [-6,-3,0,3,6]) {
+    paving(x,69,.72,8,m.line,.32);
+    paving(x,188,.72,8,m.line,.32);
+  }
+
+  // ── 建筑 ── 建筑资料、轮廓拾取网格和碰撞体分别登记。
+  function addCollider(x,y,z,w,h,d) {
+    colliders.push({ minX:x-w/2,maxX:x+w/2,minY:y,maxY:y+h,minZ:z-d/2,maxZ:z+d/2 });
+  }
+  function landmark(name,code,description,x,z,kind='study',priority=2) {
+    const entry={name,code,description,x,z,kind,priority,top:height(x,z),faces:[]};
+    landmarks.push(entry);
+    return entry;
+  }
+  function registerMesh(obj,entry) {
+    obj.userData.landmark=entry;
+    rayMeshes.push(obj);
+    return obj;
+  }
+  function piece(entry,x,y,z,w,h,d,material,{solid=true,footprint=solid,cast=true}={}) {
+    const obj=registerMesh(box(x,y,z,w,h,d,material,cast),entry);
+    entry.top=Math.max(entry.top,y+h);
+    if (solid) addCollider(x,y,z,w,h,d);
+    if (footprint) entry.faces.push({x,z,w,d});
+    return obj;
+  }
+  function hip(entry,x,y,z,w,d,h) {
+    const geo = new T.CylinderGeometry(.74,1,1,4,1);
+    geo.rotateY(Math.PI/4);
+    const unitRadius=1/Math.SQRT2;
+    geo.scale(unitRadius,1,unitRadius);
+    const obj=registerMesh(mesh(geo,m.roof,x,y+h/2,z),entry);
+    obj.scale.set(w,h,d);
+    entry.top=Math.max(entry.top,y+h);
+  }
+  function windows(x,y,z,w,d,h,floors,columns) {
+    const band=h/floors;
+    for (let row=0; row<floors; row++) {
+      const wy=y+(row+.52)*band, wh=Math.min(2.35,band*.54);
+      for (let column=0; column<columns; column++) {
+        const wx=x+((column+.5)/columns-.5)*(w-2.8);
+        const ww=Math.min(2.8,(w-2.8)/columns*.56);
+        windowPieces.push([wx,wy,z+d/2,ww,wh,.15],[wx,wy,z-d/2,ww,wh,.15]);
+      }
+      const sideCount=Math.max(2,Math.round(d/5));
+      for (let column=0; column<sideCount; column++) {
+        const wz=z+((column+.5)/sideCount-.5)*(d-1.8);
+        windowPieces.push([x+w/2,wy,wz,.15,wh,Math.min(2.45,d/sideCount*.53)],
+                          [x-w/2,wy,wz,.15,wh,Math.min(2.45,d/sideCount*.53)]);
+      }
+    }
+  }
+  function block(entry,x,y,z,w,d,h,floors,material,roofHeight=1.25) {
+    piece(entry,x,y-.09,z,w,h+.09,d,material);
+    windows(x,y,z,w,d,h,floors,Math.max(3,Math.round(w/5)));
+    piece(entry,x,y+h-.45,z,w+.35,.45,d+.35,m.light,{solid:false});
+    hip(entry,x,y+h,z,w+1.1,d+1.1,roofHeight);
+  }
+
+  const h = landmark('主楼（H楼）','H','主楼位于南北中轴线上，七层主体呈“山”字形，中央塔楼为十五层，含顶杆高约 88.8 米。',0,-71,'study',0);
+  // 十字方向的独立 AABB 保留侧翼之间的凹槽与通道。
+  block(h,0,0,-86,96,22,27.3,7,m.wall,2.1);
+  block(h,-36.5,0,-64.5,22,23,27.3,7,m.wall,2.1);
+  block(h,36.5,0,-64.5,22,23,27.3,7,m.wall,2.1);
+  block(h,0,0,-66,23,22,27.3,7,m.light,1.2);
+  piece(h,0,27.3,-72,21,35.6,18,m.wall);
+  windows(0,27.3,-72,21,18,35.6,8,4);
+  piece(h,0,28,-72,23,1.02,20,m.light,{solid:false});
+  piece(h,0,62.8,-72,22,2,19,m.light,{solid:false});
+  piece(h,0,64.8,-72,16,7,14,m.light,{solid:false});
+  piece(h,0,71.8,-72,13,1.2,12,m.brass,{solid:false});
+  hip(h,0,73,-72,13.5,12.5,8.5);
+  piece(h,0,81.5,-72,3.3,1.7,3.3,m.roof,{solid:false});
+  piece(h,0,83.2,-72,.34,5.6,.34,m.brass,{solid:false});
+  piece(h,0,0,-53.5,16,.32,4,m.stone,{solid:false});
+  piece(h,0,5.4,-53.8,15,1.1,3.6,m.light,{solid:false});
+  for (const x of [-6,-2,2,6]) piece(h,x,.26,-52.5,.8,5.25,.8,m.light);
+  piece(h,0,.2,-54.72,5.6,4.45,.2,m.windows,{solid:false});
+
+  function simple(name,code,desc,x,z,w,d,floors,style,kind='study',priority=2) {
+    const entry=landmark(name,code,desc,x,z,kind,priority);
+    block(entry,x,height(x,z),z,w,d,floors*3.45,floors,style);
+    return entry;
+  }
+  simple('功学楼（G楼）','G','功学楼位于主楼西侧，是校区教学楼，也是研究生招生考试考点曾使用的楼宇。',-62,-63,25,43,5,m.wall,'study',1);
+  simple('明学楼（M楼）','M','明学楼同样位于主楼西侧，和功学楼共同构成西侧教学区。',-65,-12,29,30,5,m.light,'study',1);
+  simple('宁学楼（N楼）','N','宁学楼是主楼东侧的教学楼，邻近大学生活动中心。',64,-72,29,39,5,m.light,'study',1);
+
+  const institute = landmark('研究院','研','研究院位于南门东侧，模型以玻璃穹顶表现入口体量。',60,135,'study',1);
+  block(institute,60,0,135,46,29,16.8,4,m.wall);
+  piece(institute,60,0,153,20,8,12,m.blue);
+  const domeGeo = new T.SphereGeometry(8.4,24,9,0,Math.PI*2,0,Math.PI/2);
+  const dome=registerMesh(mesh(domeGeo,m.glass,60,17.2,135,false),institute);
+  dome.scale.y=.67;
+  disc(60,16.8,135,8.8,.55,m.blue,true);
+  institute.top=23;
+
+  const library = landmark('图书馆','馆','图书馆依山而建，五楼观景台可远眺海面。',-168,-132,'study',0);
+  const libY=height(library.x,library.z);
+  piece(library,-168,libY-.14,-132,64,1.55,43,m.stone);
+  block(library,-177,libY+1.4,-132,39,33,21.4,5,m.light,.9);
+  piece(library,-147,libY+1.45,-131,21,19,32,m.blue);
+  piece(library,-147,libY+1.45,-114.8,20.7,18.8,.48,m.glass,{solid:false,cast:false});
+  piece(library,-136.2,libY+1.45,-131,.48,18.8,31.7,m.glass,{solid:false,cast:false});
+  for(let i=0;i<5;i++) piece(library,-147,libY+1.45+i*3.75,-114.51,21,.18,.2,m.trim,{solid:false});
+  piece(library,-147,libY+20.45,-131,22,1.15,33,m.roof,{solid:false});
+  piece(library,-178,libY+21,-116,37,1.15,3,m.glass,{solid:false,cast:false});
+
+  const activity=simple('大学生活动中心','活','大学生活动中心俗称“大活”，是学生社团活动、演出与交流的场所。',61,-23,40,28,3,m.wall,'study',1);
+  piece(activity,61,0,-7,21,6,5,m.blue);
+  piece(activity,61,6,-5,24,.65,6,m.dark,{solid:false});
+  simple('学子餐厅','子','学子餐厅是校区的两处餐厅之一，共设四层。',-152,92,42,31,4,m.clay,'life',1);
+  simple('学苑餐厅','苑','学苑餐厅位于学生生活区，为周边公寓提供日常就餐选择。',-153,-30,41,29,3,m.clay,'life',1);
+
+  for (let n=1; n<=6; n++) {
+    const x=[-188,-145,-110][(n-1)%3];
+    const z=n<=3 ? 142 : 166;
+    simple('山下学生公寓 '+n+' 栋',String(n),'山下学生公寓 '+n+' 栋，属于低地生活区，靠近校区南部步道。',x,z,28,13,5,m.dorm,'life',3);
+  }
+  for (let n=12; n<=14; n++) {
+    const x=[-194,-164,-134][n-12];
+    simple('山上学生公寓 '+n+' 栋',String(n),'山上学生公寓 '+n+' 栋位于高地，部分朝向的房间因可望海被学生称作“海景房”。',x,-168,24,14,6,m.dorm,'life',3);
+  }
+
+  const gym=landmark('综合球类馆','球','综合球类馆位于校园东侧，为球类教学与室内运动提供场地。',155,-69,'sport',1);
+  piece(gym,155,0,-69,72,12.5,47,m.blue);
+  hip(gym,155,12.5,-69,74,49,5);
+  piece(gym,155,0,-43,24,7,5,m.wall);
+  piece(gym,155,1,-40.39,22,4.5,.26,m.glass,{solid:false,cast:false});
+
+  const field=landmark('露天体育场','场','校园东侧的露天体育场设有环形跑道和中间草坪，可用于田径和足球活动。',153,16,'sport',0);
+  // 两段半圆与两段直道共用同一组轮廓。逐圈生成三角带，保留中间的球场。
+  function trackContour(radius) {
+    const result=[];
+    for(const [zc,start] of [[-12,Math.PI],[12,0]]) {
+      for(let i=0; i<=24; i++) {
+        const a=start+Math.PI*i/24;
+        result.push(new T.Vector2(Math.cos(a)*radius,zc+Math.sin(a)*radius));
+      }
+    }
+    return result;
+  }
+  function trackStrip(outside,inside,y,material) {
+    const a=trackContour(outside),b=trackContour(inside),vertices=[];
+    for(let i=0; i<a.length; i++) {
+      const j=(i+1)%a.length;
+      for(const p of [a[i],b[i],a[j],a[j],b[i],b[j]]) vertices.push(p.x,0,p.y);
+    }
+    const geo=new T.BufferGeometry();
+    geo.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
+    geo.computeVertexNormals();
+    return registerMesh(mesh(geo,material,field.x,y,field.z,false),field);
+  }
+  registerMesh(paving(field.x,field.z,83,95,m.grass,.12),field);
+  trackStrip(35,27,.22,m.track);
+  for(let lane=0; lane<=6; lane++) {
+    const r=27+lane*8/6;
+    trackStrip(r+.055,r-.055,.25,m.line);
+  }
+  for(let i=0; i<6; i++) registerMesh(paving(field.x,field.z-21+i*8.4,40,8.4,i%2 ? m.grass : m.deepGrass,.18),field);
+  for(const x of [field.x-20,field.x+20]) paving(x,field.z,.16,50,m.line,.27);
+  for(const z of [field.z-25,field.z,field.z+25]) paving(field.x,z,40,.16,m.line,.27);
+  const centerRing=pavingCircle(5.1,4.94,field.x,field.z,.28);
+  registerMesh(centerRing,field);
+  function pavingCircle(outer,inner,x,z,y) {
+    const geo=new T.RingGeometry(inner,outer,42);
+    geo.rotateX(-Math.PI/2);
+    return mesh(geo,m.line,x,y,z,false);
+  }
+  for(let i=0; i<3; i++) piece(field,195,i*.6,16,3.6-i*.9,.6,44,m.stone);
+  field.top=3;
+
+  function gate(name,code,desc,x,z,across,span) {
+    const entry=landmark(name,code,desc,x,z,'gate',2);
+    const y=height(x,z);
+    for (const side of [-1,1]) {
+      const off=span*side/2;
+      piece(entry,x+(across?off:0),y,z+(across?0:off),3,6.9,3,m.light);
+    }
+    piece(entry,x,y+5.5,z,across?span+3.1:3.1,1.25,across?3.1:span+3.1,m.roof,{footprint:false});
+    piece(entry,x,y+6.75,z,across?span+4:3.8,.55,across?3.8:span+4,m.light,{footprint:false});
+  }
+  gate('南门','南','南门位于校园中轴南端，从这里向北可沿主步道望见主楼。',0,175,true,23);
+  gate('西门','西','西门是校园西侧的出入口，通往西侧道路及生活区。',-210,69,false,11);
+  gate('北门','北','北门连接北侧校园道路，招生考试公告曾指定宁学楼考生由此入校。',9,-183,true,11);
+  gate('东门','东','东门位于校园东侧，与运动区附近的道路相接。',213,69,false,11);
+
+  const temp = new T.Object3D();
+  const windowMesh = new T.InstancedMesh(boxGeometry,m.windows,windowPieces.length);
+  windowPieces.forEach(([x,y,z,w,h,d],i) => {
+    temp.position.set(x,y,z); temp.scale.set(w,h,d);
+    temp.updateMatrix(); windowMesh.setMatrixAt(i,temp.matrix);
+  });
+  windowMesh.instanceMatrix.needsUpdate=true;
+  windowMesh.receiveShadow=true;
+  scene.add(windowMesh);
+
+  // ── 树木 ── 126 棵树，树干、下层树冠、上层树冠各用一个 InstancedMesh。
+  let seed=917113;
+  function random() {
+    seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+    return seed/4294967296;
+  }
+  const treeSites=[];
+  const treeCount=126;
+  function treeAllowed(x,z) {
+    if (Math.abs(x)<12 && z>-56 && z<180) return false;
+    if (Math.hypot(x,z+18)<35) return false;
+    if (Math.abs(x-field.x)<47 && Math.abs(z-field.z)<51) return false;
+    if (roads.some(r=>Math.abs(x-r.x)<r.w/2+3 && Math.abs(z-r.z)<r.d/2+3)) return false;
+    if (colliders.some(b=>x>b.minX-3 && x<b.maxX+3 && z>b.minZ-3 && z<b.maxZ+3)) return false;
+    return treeSites.every(p=>(p.x-x)**2+(p.z-z)**2>21);
+  }
+  function plant(x,z) {
+    if (treeAllowed(x,z)) treeSites.push({x,z,size:3.7+random()*4.1,angle:random()*Math.PI});
+  }
+  for(const side of [-1,1]) {
+    for(let z=24; z<=156; z+=10) plant(side*(16+random()*1.8),z);
+    for(let z=-103; z<=174; z+=10) plant(side*(101+random()*2.5),z);
+    for(let x=24; x<=210; x+=12) plant(side*x,-103.4-random()*1.8);
+  }
+  while(treeSites.length<treeCount) plant(-211+422*random(),-189+367*random());
+
+  const trunks=new T.InstancedMesh(new T.CylinderGeometry(.69,1,1,6),m.bark,treeCount);
+  const cone=new T.ConeGeometry(1,1,6);
+  const crowns=new T.InstancedMesh(cone,m.needles,treeCount);
+  const tips=new T.InstancedMesh(cone,m.needles,treeCount);
+  const treeTints=[0x527e55,0x58845c,0x467453,0x709657,0x59855b].map(c=>new T.Color(c));
+  function instanceTreePart(mesh,i,x,y,z,w,h,angle) {
+    temp.position.set(x,y,z);
+    temp.rotation.set(0,angle,0);
+    temp.scale.set(w,h,w);
+    temp.updateMatrix();
+    mesh.setMatrixAt(i,temp.matrix);
+  }
+  treeSites.forEach(({x,z,size,angle},i)=>{
+    const y=height(x,z);
+    instanceTreePart(trunks,i,x,y+size*.19,z,.14+size*.015,size*.38,angle);
+    instanceTreePart(crowns,i,x,y+size*.52,z,size*.26,size*.56,angle);
+    instanceTreePart(tips,i,x,y+size*.73,z,size*.203,size*.54,angle+.32);
+    const tint=treeTints[i%treeTints.length];
+    crowns.setColorAt(i,tint);
+    tips.setColorAt(i,tint);
+  });
+  for(const trees of [trunks,crowns,tips]) {
+    trees.castShadow=trees.receiveShadow=true;
+    trees.instanceMatrix.needsUpdate=true;
+    if(trees.instanceColor) trees.instanceColor.needsUpdate=true;
+    scene.add(trees);
+  }
+
+  // ── 控制 ── 漫游与俯瞰各用一台相机；只有已锁定时才让 WASD 更新玩家。
+  const controls=new PointerLockControls(walkCam,canvas);
+  controls.minPolarAngle=.055;
+  controls.maxPolarAngle=Math.PI-.055;
+  const fixedStep=1/60, eyeHeight=1.7, bodyRadius=.35, speed=9;
+  const held=new Set(), movementKeys=new Set(['KeyW','KeyA','KeyS','KeyD']);
+  const velocity=new T.Vector3(), desired=new T.Vector3();
+  const viewDirection=new T.Vector3(), forward=new T.Vector3(), right=new T.Vector3();
+  walkCam.position.set(0,height(0,185)+eyeHeight,185);
+  walkCam.lookAt(0,eyeHeight,0);
+  let mode='orbit', started=false, accumulator=0, dragId=null, lockPending=false;
+  let firstLookEvent=false;
+  let dragX=0, dragY=0, azimuth=.52, elevation=.68, radius=548, targetRadius=548, dragEndedAt=-Infinity;
+  const orbitTarget=new T.Vector3(0,7,-5);
+  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
+  const pointerAvailable=typeof canvas.requestPointerLock==='function' && matchMedia('(any-pointer: fine)').matches;
+  function fitDistance() { return Math.max(1,1.36/orbitCam.aspect)**.89; }
+  function locked() { return mode==='walk' && document.pointerLockElement===canvas; }
+  function stopMoving() { held.clear(); velocity.set(0,0,0); accumulator=0; }
+  function cancelDrag() {
+    if(dragId===null) return;
+    const id=dragId;
+    dragId=null;
+    canvas.classList.remove('dragging');
+    if(canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+    dragEndedAt=performance.now();
+  }
+  function showApp() {
+    started=true;
+    el('start').hidden=true;
+    el('brand').hidden=false;
+    el('mapPanel').hidden=false;
+    el('hud').hidden=false;
+  }
+  function refreshMode() {
+    const active=locked();
+    el('walk').setAttribute('aria-pressed',String(mode==='walk'));
+    el('orbit').setAttribute('aria-pressed',String(mode==='orbit'));
+    el('crosshair').hidden=!active;
+    el('labels').hidden=!started || mode!=='orbit';
+    el('zoom').hidden=mode!=='orbit';
+    el('hint').textContent=mode==='orbit'
+      ? '拖拽旋转 · 滚轮缩放'
+      : active ? 'WASD 移动 · E 查看 · Esc 释放' : '点击画面继续漫游';
+    canvas.style.cursor=mode==='orbit' ? 'grab' : active ? 'none' : 'pointer';
+    if(mode==='walk') {
+      scene.fog.near=285;
+      scene.fog.far=1100;
+    }
+    if (!active) clearTarget();
+  }
+  function selectOrbit() {
+    showApp();
+    mode='orbit';
+    if(document.pointerLockElement===canvas) controls.unlock();
+    stopMoving();
+    refreshMode();
+  }
+  function requestWalk() {
+    if(!pointerAvailable || lockPending || locked()) return;
+    cancelDrag();
+    showApp();
+    mode='walk';
+    stopMoving();
+    refreshMode();
+    lockPending=true;
+    try {
+      // 保持在按钮的同步点击事件中，满足 Pointer Lock 的用户手势要求。
+      controls.lock();
+    } catch {
+      lockFailed();
+    }
+  }
+  function lockFailed() {
+    if (!lockPending) return;
+    lockPending=false;
+    if (mode==='walk') {
+      selectOrbit();
+      el('hint').textContent='浏览器暂未锁定鼠标，可点击第一人称重试';
+    }
+  }
+  el('startWalk').addEventListener('click',requestWalk);
+  el('walk').addEventListener('click',requestWalk);
+  el('startOrbit').addEventListener('click',selectOrbit);
+  el('orbit').addEventListener('click',selectOrbit);
+  document.addEventListener('pointerlockchange',()=>{
+    lockPending=false;
+    firstLookEvent=locked();
+    if(mode!=='walk' && document.pointerLockElement===canvas) controls.unlock();
+    stopMoving();
+    refreshMode();
+  });
+  document.addEventListener('pointerlockerror',lockFailed);
+  // 某些浏览器在锁定时会把光标重定位记作一次大幅鼠标移动。
+  // 只过滤锁定后的首个异常事件，其余移动交由 PointerLockControls。
+  document.addEventListener('mousemove',event=>{
+    if(!firstLookEvent || !event.isTrusted) return;
+    firstLookEvent=false;
+    if(Math.hypot(event.movementX,event.movementY)>200) event.stopImmediatePropagation();
+  },true);
+  window.addEventListener('blur',stopMoving);
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMoving(); });
+
+  canvas.addEventListener('click',()=>{ if (mode==='walk' && !locked()) requestWalk(); });
+  canvas.addEventListener('pointerdown',event=>{
+    if(!started || mode!=='orbit' || dragId!==null || event.button!==0) return;
+    dragId=event.pointerId;
+    dragX=event.clientX;
+    dragY=event.clientY;
+    canvas.setPointerCapture(dragId);
+    canvas.classList.add('dragging');
+    canvas.style.cursor='';
+  });
+  canvas.addEventListener('pointermove',event=>{
+    if(event.pointerId!==dragId) return;
+    azimuth-=(event.clientX-dragX)*.006;
+    elevation=clamp(elevation+(event.clientY-dragY)*.006,.24,1.39);
+    dragX=event.clientX;
+    dragY=event.clientY;
+  });
+  for(const type of ['pointerup','pointercancel','lostpointercapture']) canvas.addEventListener(type,event=>{
+    if(event.pointerId===dragId) cancelDrag();
+  });
+  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,190,815); }
+  canvas.addEventListener('wheel',event=>{
+    if(mode!=='orbit' || !started) return;
+    event.preventDefault();
+    const delta=event.deltaY*(event.deltaMode===1 ? 16 : event.deltaMode===2 ? innerHeight : 1);
+    zoomBy(Math.exp(clamp(delta,-240,240)*.0014));
+  },{passive:false});
+  el('nearer').addEventListener('click',()=>zoomBy(.82));
+  el('farther').addEventListener('click',()=>zoomBy(1/.82));
+
+  function occupied(x,z) {
+    if(x-bodyRadius<bounds.minX || x+bodyRadius>bounds.maxX ||
+       z-bodyRadius<bounds.minZ || z+bodyRadius>bounds.maxZ) return true;
+    const floor=height(x,z);
+    return colliders.some(b=>
+      x+bodyRadius>b.minX && x-bodyRadius<b.maxX &&
+      z+bodyRadius>b.minZ && z-bodyRadius<b.maxZ &&
+      floor+.08<b.maxY && floor+eyeHeight>b.minY
+    );
+  }
+  function walkStep(dt) {
+    walkCam.getWorldDirection(forward);
+    forward.y=0;
+    forward.normalize();
+    right.set(-forward.z,0,forward.x);
+    const ahead=Number(held.has('KeyW'))-Number(held.has('KeyS'));
+    const sideways=Number(held.has('KeyD'))-Number(held.has('KeyA'));
+    desired.copy(forward).multiplyScalar(ahead).addScaledVector(right,sideways);
+    if (desired.lengthSq()>1) desired.normalize();
+    desired.multiplyScalar(speed);
+    velocity.lerp(desired,1-Math.exp(-(ahead||sideways ? 13 : 10)*dt));
+    const p=walkCam.position;
+    // 先试 X，再用更新后的 X 试 Z，撞墙时只清掉法向速度。
+    const nx=p.x+velocity.x*dt;
+    if(!occupied(nx,p.z)) p.x=nx;
+    else velocity.x=0;
+    const nz=p.z+velocity.z*dt;
+    if(!occupied(p.x,nz)) p.z=nz;
+    else velocity.z=0;
+    p.y=height(p.x,p.z)+eyeHeight;
+  }
+
+  // ── 交互 ── 与建筑外形做射线检测；每次按 E 用当下视角重新检测。
+  const ray=new T.Raycaster(undefined,undefined,0,16);
+  const intersections=[];
+  let aimed=null;
+  function target() {
+    walkCam.getWorldDirection(viewDirection);
+    ray.set(walkCam.position,viewDirection);
+    intersections.length=0;
+    ray.intersectObjects(rayMeshes,false,intersections);
+    const hit=intersections[0];
+    if (!hit) return null;
+    // 低头看时，地形可以遮住位于坡脚或地面之后的屋体。
+    for(let d=.3; d<hit.distance-.2; d+=.5) {
+      const x=walkCam.position.x+d*viewDirection.x;
+      const z=walkCam.position.z+d*viewDirection.z;
+      if(walkCam.position.y+d*viewDirection.y<height(x,z)) return null;
+    }
+    return hit.object.userData.landmark;
+  }
+  function clearTarget() {
+    aimed=null;
+    el('crosshair').classList.remove('hit');
+    el('aim').hidden=true;
+    el('card').hidden=true;
+  }
+  function updateTarget() {
+    const next=target();
+    if (next===aimed) return;
+    aimed=next;
+    el('crosshair').classList.toggle('hit',Boolean(aimed));
+    el('aim').hidden=!aimed;
+    if(aimed) el('aim').textContent='E · '+aimed.name;
+  }
+  window.addEventListener('keydown',event=>{
+    if(!locked()) return;
+    if(movementKeys.has(event.code)) {
+      event.preventDefault();
+      held.add(event.code);
+    } else if(event.code==='KeyE' && !event.repeat) {
+      const entry=target();
+      if(!entry) {
+        el('card').hidden=true;
+        return;
+      }
+      const card=el('card');
+      const sameOpen=!card.hidden && card.dataset.building===entry.name;
+      card.dataset.building=entry.name;
+      el('cardTitle').textContent=entry.name;
+      el('cardDescription').textContent=entry.description;
+      card.hidden=sameOpen;
+    }
+  });
+  window.addEventListener('keyup',event=>held.delete(event.code));
+
+  // 俯瞰索引标注：优先显示地标，避免标牌互相覆盖。
+  const labelRoot=el('labels');
+  const labelItems=[...landmarks].sort((a,b)=>a.priority-b.priority).map(entry=>{
+    const label=document.createElement('span');
+    label.className='place';
+    label.dataset.kind=entry.kind;
+    const code=document.createElement('i');
+    code.textContent=entry.code;
+    label.append(code,document.createTextNode(entry.name));
+    labelRoot.append(label);
+    return {entry,label};
+  });
+  const projected=new T.Vector3();
+  const reserved=[];
+  function updateLabels() {
+    if(!started || mode!=='orbit') return;
+    const width=innerWidth, screenHeight=innerHeight;
+    const compact=width<700;
+    reserved.length=0;
+    reserved.push([0,0,compact?181:225,compact?66:91],
+                  [width-(compact?115:210),0,width,compact?119:201],
+                  [width*.5-185,screenHeight-73,width*.5+185,screenHeight]);
+    for(const {entry,label} of labelItems) {
+      projected.set(entry.x,entry.top+3.3,entry.z).project(orbitCam);
+      const x=(projected.x+1)*width*.5;
+      const y=(1-projected.y)*screenHeight*.5;
+      const w=(compact?9:11)*entry.name.length+(compact?19:27);
+      const canShow=(!compact || entry.priority<=1) && projected.z>-1 && projected.z<1 &&
+        x-w/2>5 && x+w/2<width-5 && y>16 && y<screenHeight-12;
+      const rect=[x-w/2-4,y-23,x+w/2+4,y+3];
+      const show=canShow && !reserved.some(([l,t,r,b])=>rect[0]<r && rect[2]>l && rect[1]<b && rect[3]>t);
+      label.hidden=!show;
+      if (show) {
+        reserved.push(rect);
+        label.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px) translate(-50%,-100%)';
+      }
+    }
+  }
+
+  // 小地图的道路、轮廓和树位源自同一组场景坐标。底图只绘制一次。
+  const map=el('map');
+  const mapContext=map.getContext('2d');
+  const mapBase=document.createElement('canvas');
+  mapBase.width=map.width;
+  mapBase.height=map.height;
+  const base=mapBase.getContext('2d');
+  const mapScale=.622;
+  const mx=x=>map.width/2+mapScale*x;
+  const mz=z=>map.height/2+mapScale*z;
+  function mapRect(ctx,x,z,w,d) { ctx.fillRect(mx(x-w/2),mz(z-d/2),w*mapScale,d*mapScale); }
+  base.fillStyle='#d6e2c4';
+  base.fillRect(0,0,map.width,map.height);
+  base.fillStyle='#bfcca9';
+  mapRect(base,-161,-117,151,158);
+  base.fillStyle='#75817a';
+  for(const r of roads) mapRect(base,r.x,r.z,r.w,r.d);
+  base.fillStyle='#fbefcd';
+  mapRect(base,0,91,17,182);
+  base.beginPath();
+  base.arc(mx(0),mz(-18),32*mapScale,0,Math.PI*2);
+  base.fill();
+  base.fillStyle='#77935e';
+  for(const p of treeSites) base.fillRect(mx(p.x)-.75,mz(p.z)-.75,1.5,1.5);
+  const mapColors={study:'#286556',life:'#aa7154',sport:'#497080',gate:'#786c48'};
+  for(const entry of landmarks) {
+    base.fillStyle=mapColors[entry.kind];
+    for(const f of entry.faces) mapRect(base,f.x,f.z,f.w,f.d);
+  }
+  base.strokeStyle='#a65d49';
+  base.lineWidth=3.6;
+  base.beginPath();
+  base.roundRect(mx(field.x-35),mz(field.z-47),70*mapScale,94*mapScale,23*mapScale);
+  base.stroke();
+  function updateMap() {
+    if(!started) return;
+    const ctx=mapContext;
+    ctx.drawImage(mapBase,0,0);
+    const walk=mode==='walk';
+    const p=walk ? walkCam.position : orbitTarget;
+    const x=mx(p.x), z=mz(p.z);
+    ctx.save();
+    ctx.translate(x,z);
+    ctx.fillStyle=walk ? '#f5cd67' : '#174e42';
+    ctx.strokeStyle='#ffffee';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    if(walk) {
+      walkCam.getWorldDirection(viewDirection);
+      ctx.rotate(Math.atan2(viewDirection.x,-viewDirection.z));
+      ctx.moveTo(0,-8); ctx.lineTo(5,5); ctx.lineTo(0,3); ctx.lineTo(-5,5);
+      ctx.closePath();
+    } else {
+      ctx.arc(0,0,4.5,0,Math.PI*2);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
+  function resize() {
+    const w=Math.max(1,innerWidth), h=Math.max(1,innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,w<700?1.35:1.65));
+    renderer.setSize(w,h);
+    for(const camera of [walkCam,orbitCam]) {
+      camera.aspect=w/h;
+      camera.updateProjectionMatrix();
+    }
+  }
+  window.addEventListener('resize',resize);
+  resize();
+  refreshMode();
+  el('startOrbit').disabled=false;
+  el('startWalk').disabled=el('walk').disabled=!pointerAvailable;
+  el('boot').hidden=pointerAvailable;
+  if(!pointerAvailable) el('boot').textContent='当前设备可使用触摸俯瞰。第一人称需要支持鼠标锁定的桌面浏览器。';
+
+  // 防止首次射线拾取发生在第一帧渲染前，确保所有建筑世界矩阵已经生效。
+  scene.updateMatrixWorld(true);
+  let previous=performance.now(), lastMap=-Infinity;
+  function frame(now) {
+    const elapsed=clamp((now-previous)/1000,0,.1);
+    previous=now;
+    if(locked()) {
+      accumulator+=elapsed;
+      while(accumulator>=fixedStep) {
+        walkStep(fixedStep);
+        accumulator-=fixedStep;
+      }
+      updateTarget();
+    } else {
+      accumulator=0;
+    }
+    if(mode==='orbit') {
+      if(dragId===null && now-dragEndedAt>850 && !reduceMotion.matches) azimuth+=elapsed*(started ? .075 : .042);
+      radius=T.MathUtils.lerp(radius,targetRadius,1-Math.exp(-11*elapsed));
+      const fit=fitDistance();
+      const r=radius*fit, flat=r*Math.cos(elevation);
+      scene.fog.near=490*fit;
+      scene.fog.far=1560*fit;
+      orbitCam.position.set(orbitTarget.x+Math.sin(azimuth)*flat,
+                            orbitTarget.y+r*Math.sin(elevation),
+                            orbitTarget.z+Math.cos(azimuth)*flat);
+      orbitCam.lookAt(orbitTarget);
+      orbitCam.updateMatrixWorld();
+      updateLabels();
+    }
+    if(now-lastMap>64) {
+      updateMap();
+      lastMap=now;
+    }
+    renderer.render(scene,mode==='orbit'?orbitCam:walkCam);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>

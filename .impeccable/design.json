@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T04:33:56.758Z",
+  "title": "Design System: 哈工威·云上校园",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "深绿墨色",
+        "tonalRamp": [
+          "oklch(15.00% 0.0425 175.75)",
+          "oklch(26.43% 0.0425 175.75)",
+          "oklch(37.86% 0.0425 175.75)",
+          "oklch(49.29% 0.0425 175.75)",
+          "oklch(60.71% 0.0425 175.75)",
+          "oklch(72.14% 0.0425 175.75)",
+          "oklch(83.57% 0.0425 175.75)",
+          "oklch(95.00% 0.0425 175.75)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "柔绿灰",
+        "tonalRamp": [
+          "oklch(15.00% 0.0330 170.84)",
+          "oklch(26.43% 0.0330 170.84)",
+          "oklch(37.86% 0.0330 170.84)",
+          "oklch(49.29% 0.0330 170.84)",
+          "oklch(60.71% 0.0330 170.84)",
+          "oklch(72.14% 0.0330 170.84)",
+          "oklch(83.57% 0.0330 170.84)",
+          "oklch(95.00% 0.0330 170.84)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "操作绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0692 172.60)",
+          "oklch(26.43% 0.0692 172.60)",
+          "oklch(37.86% 0.0692 172.60)",
+          "oklch(49.29% 0.0692 172.60)",
+          "oklch(60.71% 0.0692 172.60)",
+          "oklch(72.14% 0.0692 172.60)",
+          "oklch(83.57% 0.0692 172.60)",
+          "oklch(95.00% 0.0692 172.60)"
+        ]
+      },
+      "deep": {
+        "role": "primary",
+        "displayName": "校园深绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0477 175.80)",
+          "oklch(26.43% 0.0477 175.80)",
+          "oklch(37.86% 0.0477 175.80)",
+          "oklch(49.29% 0.0477 175.80)",
+          "oklch(60.71% 0.0477 175.80)",
+          "oklch(72.14% 0.0477 175.80)",
+          "oklch(83.57% 0.0477 175.80)",
+          "oklch(95.00% 0.0477 175.80)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "米白纸面",
+        "tonalRamp": [
+          "oklch(15.00% 0.0119 111.75)",
+          "oklch(26.43% 0.0119 111.75)",
+          "oklch(37.86% 0.0119 111.75)",
+          "oklch(49.29% 0.0119 111.75)",
+          "oklch(60.71% 0.0119 111.75)",
+          "oklch(72.14% 0.0119 111.75)",
+          "oklch(83.57% 0.0119 111.75)",
+          "oklch(95.00% 0.0119 111.75)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "半透明米白纸面",
+        "tonalRamp": [
+          "oklch(15.00% 0.0119 111.75)",
+          "oklch(26.43% 0.0119 111.75)",
+          "oklch(37.86% 0.0119 111.75)",
+          "oklch(49.29% 0.0119 111.75)",
+          "oklch(60.71% 0.0119 111.75)",
+          "oklch(72.14% 0.0119 111.75)",
+          "oklch(83.57% 0.0119 111.75)",
+          "oklch(95.00% 0.0119 111.75)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "浅绿边线",
+        "tonalRamp": [
+          "oklch(15.00% 0.0187 137.80)",
+          "oklch(26.43% 0.0187 137.80)",
+          "oklch(37.86% 0.0187 137.80)",
+          "oklch(49.29% 0.0187 137.80)",
+          "oklch(60.71% 0.0187 137.80)",
+          "oklch(72.14% 0.0187 137.80)",
+          "oklch(83.57% 0.0187 137.80)",
+          "oklch(95.00% 0.0187 137.80)"
+        ]
+      },
+      "on-deep": {
+        "role": "neutral",
+        "displayName": "暖白字色",
+        "tonalRamp": [
+          "oklch(15.00% 0.0189 93.66)",
+          "oklch(26.43% 0.0189 93.66)",
+          "oklch(37.86% 0.0189 93.66)",
+          "oklch(49.29% 0.0189 93.66)",
+          "oklch(60.71% 0.0189 93.66)",
+          "oklch(72.14% 0.0189 93.66)",
+          "oklch(83.57% 0.0189 93.66)",
+          "oklch(95.00% 0.0189 93.66)"
+        ]
+      },
+      "hover": {
+        "role": "primary",
+        "displayName": "浅叶悬停",
+        "tonalRamp": [
+          "oklch(15.00% 0.0215 143.21)",
+          "oklch(26.43% 0.0215 143.21)",
+          "oklch(37.86% 0.0215 143.21)",
+          "oklch(49.29% 0.0215 143.21)",
+          "oklch(60.71% 0.0215 143.21)",
+          "oklch(72.14% 0.0215 143.21)",
+          "oklch(83.57% 0.0215 143.21)",
+          "oklch(95.00% 0.0215 143.21)"
+        ]
+      },
+      "tool-selected": {
+        "role": "primary",
+        "displayName": "工具开启浅绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0324 140.99)",
+          "oklch(26.43% 0.0324 140.99)",
+          "oklch(37.86% 0.0324 140.99)",
+          "oklch(49.29% 0.0324 140.99)",
+          "oklch(60.71% 0.0324 140.99)",
+          "oklch(72.14% 0.0324 140.99)",
+          "oklch(83.57% 0.0324 140.99)",
+          "oklch(95.00% 0.0324 140.99)"
+        ]
+      },
+      "row-selected": {
+        "role": "primary",
+        "displayName": "目录选中浅绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0274 129.81)",
+          "oklch(26.43% 0.0274 129.81)",
+          "oklch(37.86% 0.0274 129.81)",
+          "oklch(49.29% 0.0274 129.81)",
+          "oklch(60.71% 0.0274 129.81)",
+          "oklch(72.14% 0.0274 129.81)",
+          "oklch(83.57% 0.0274 129.81)",
+          "oklch(95.00% 0.0274 129.81)"
+        ]
+      },
+      "button-focus": {
+        "role": "secondary",
+        "displayName": "按钮金色焦点",
+        "tonalRamp": [
+          "oklch(15.00% 0.1216 78.97)",
+          "oklch(26.43% 0.1216 78.97)",
+          "oklch(37.86% 0.1216 78.97)",
+          "oklch(49.29% 0.1216 78.97)",
+          "oklch(60.71% 0.1216 78.97)",
+          "oklch(72.14% 0.1216 78.97)",
+          "oklch(83.57% 0.1216 78.97)",
+          "oklch(95.00% 0.1216 78.97)"
+        ]
+      },
+      "field-focus": {
+        "role": "secondary",
+        "displayName": "输入深金焦点",
+        "tonalRamp": [
+          "oklch(15.00% 0.1096 81.13)",
+          "oklch(26.43% 0.1096 81.13)",
+          "oklch(37.86% 0.1096 81.13)",
+          "oklch(49.29% 0.1096 81.13)",
+          "oklch(60.71% 0.1096 81.13)",
+          "oklch(72.14% 0.1096 81.13)",
+          "oklch(83.57% 0.1096 81.13)",
+          "oklch(95.00% 0.1096 81.13)"
+        ]
+      },
+      "label-study": {
+        "role": "secondary",
+        "displayName": "教学绿",
+        "tonalRamp": [
+          "oklch(15.00% 0.0636 174.18)",
+          "oklch(26.43% 0.0636 174.18)",
+          "oklch(37.86% 0.0636 174.18)",
+          "oklch(49.29% 0.0636 174.18)",
+          "oklch(60.71% 0.0636 174.18)",
+          "oklch(72.14% 0.0636 174.18)",
+          "oklch(83.57% 0.0636 174.18)",
+          "oklch(95.00% 0.0636 174.18)"
+        ]
+      },
+      "label-life": {
+        "role": "secondary",
+        "displayName": "生活棕",
+        "tonalRamp": [
+          "oklch(15.00% 0.0931 41.06)",
+          "oklch(26.43% 0.0931 41.06)",
+          "oklch(37.86% 0.0931 41.06)",
+          "oklch(49.29% 0.0931 41.06)",
+          "oklch(60.71% 0.0931 41.06)",
+          "oklch(72.14% 0.0931 41.06)",
+          "oklch(83.57% 0.0931 41.06)",
+          "oklch(95.00% 0.0931 41.06)"
+        ]
+      },
+      "label-sport": {
+        "role": "secondary",
+        "displayName": "运动蓝",
+        "tonalRamp": [
+          "oklch(15.00% 0.0570 234.63)",
+          "oklch(26.43% 0.0570 234.63)",
+          "oklch(37.86% 0.0570 234.63)",
+          "oklch(49.29% 0.0570 234.63)",
+          "oklch(60.71% 0.0570 234.63)",
+          "oklch(72.14% 0.0570 234.63)",
+          "oklch(83.57% 0.0570 234.63)",
+          "oklch(95.00% 0.0570 234.63)"
+        ]
+      },
+      "label-gate": {
+        "role": "secondary",
+        "displayName": "入口橄榄",
+        "tonalRamp": [
+          "oklch(15.00% 0.0431 94.05)",
+          "oklch(26.43% 0.0431 94.05)",
+          "oklch(37.86% 0.0431 94.05)",
+          "oklch(49.29% 0.0431 94.05)",
+          "oklch(60.71% 0.0431 94.05)",
+          "oklch(72.14% 0.0431 94.05)",
+          "oklch(83.57% 0.0431 94.05)",
+          "oklch(95.00% 0.0431 94.05)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "启动标题",
+        "purpose": "首次进入的中文主标题。"
+      },
+      "title": {
+        "displayName": "建筑标题",
+        "purpose": "建筑详情；手机缩为18px。"
+      },
+      "panel-title": {
+        "displayName": "面板标题",
+        "purpose": "目录与参考图标题。"
+      },
+      "body": {
+        "displayName": "正文",
+        "purpose": "启动说明，面板说明使用局部紧凑变体。"
+      },
+      "control": {
+        "displayName": "模式按钮",
+        "purpose": "桌面HUD模式操作。"
+      },
+      "label": {
+        "displayName": "场景标签",
+        "purpose": "场景地点；手机缩为9px。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-panel",
+        "value": "0 12px 40px #152f3326",
+        "purpose": "品牌、小地图、HUD、目录和详情。"
+      },
+      {
+        "name": "intro",
+        "value": "0 22px 70px #20353540",
+        "purpose": "首次进入启动卡。"
+      },
+      {
+        "name": "scene-label",
+        "value": "0 2px 10px #203b352b",
+        "purpose": "地点标签与场景分离。"
+      },
+      {
+        "name": "crosshair",
+        "value": "0 0 3px #132b22",
+        "purpose": "准星在浅色场景中的清晰度。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "orbit-target-response",
+        "value": "1 - exp(-4 * elapsed)",
+        "purpose": "相机目标每帧指数插值；减少动态时直接置为目标。"
+      },
+      {
+        "name": "orbit-radius-response",
+        "value": "1 - exp(-8 * elapsed)",
+        "purpose": "缩放半径每帧指数插值；减少动态时直接置为目标。"
+      },
+      {
+        "name": "auto-rotation",
+        "value": "0.075rad/s",
+        "purpose": "显式开启后自转；拖拽后等待850ms，减少动态时暂停实际运动。"
+      },
+      {
+        "name": "tour-stop",
+        "value": "6500ms",
+        "purpose": "六站巡览每站停留时间；减少动态时仍切换站点。"
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "CSS动画和过渡关闭；自转暂停；聚焦与缩放直接到位。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "hide-hint",
+        "value": "1050px"
+      },
+      {
+        "name": "mobile",
+        "value": "700px"
+      },
+      {
+        "name": "short-viewport-height",
+        "value": "460px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary start action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "启动第一人称的主要操作。",
+      "html": "<button class=\"ds-primary\" type=\"button\">进入第一人称漫游</button>",
+      "css": ".ds-primary {font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;padding:10px 12px;border:1px solid var(--deep,#133b32);border-radius:6px;background:var(--deep,#133b32);color:#fffbed;font-size:13px;font-weight:750;}.ds-primary:hover:not(:disabled){filter:brightness(1.16)}.ds-primary:disabled{opacity:.55;cursor:default}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    },
+    {
+      "name": "Secondary start action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "启动俯瞰的次要操作。",
+      "html": "<button class=\"ds-secondary\" type=\"button\">俯瞰全校</button>",
+      "css": ".ds-secondary {font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;padding:10px 12px;border:1px solid #afc6b7;border-radius:6px;background:transparent;color:var(--ink,#15372f);font-size:13px;font-weight:750;}.ds-secondary:hover:not(:disabled){filter:brightness(1.16)}.ds-secondary:disabled{opacity:.55;cursor:default}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    },
+    {
+      "name": "Mode buttons",
+      "kind": "button",
+      "refersTo": "mode-button",
+      "description": "同组中当前模式用深绿填充。",
+      "html": "<div class=\"ds-modes\"><button class=\"ds-mode\" type=\"button\" aria-pressed=\"false\">第一人称</button><button class=\"ds-mode\" type=\"button\" aria-pressed=\"true\">俯瞰全校</button></div>",
+      "css": ".ds-modes{display:flex;gap:3px}.ds-mode{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;min-height:34px;padding:5px 10px;border:0;border-radius:5px;background:transparent;color:var(--ink,#15372f);font-size:12px;font-weight:750}.ds-mode:hover:not(:disabled){background:#e1ede0}.ds-mode[aria-pressed=\"true\"]{background:var(--deep,#133b32);color:#fffbed}.ds-mode:disabled{opacity:.55;cursor:default}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    },
+    {
+      "name": "Floating HUD navigation",
+      "kind": "nav",
+      "refersTo": "floating-panel",
+      "description": "底部工具组的纸面、边线、选中与悬停状态。",
+      "html": "<nav class=\"ds-hud\" aria-label=\"校园漫游控制\"><button class=\"ds-tool\" aria-expanded=\"true\">建筑目录</button><button class=\"ds-tool\">原图对照</button><button class=\"ds-tool\">复位</button><button class=\"ds-tool\" aria-pressed=\"true\">标注</button><button class=\"ds-tool\" aria-pressed=\"false\">自转</button><button class=\"ds-tool\" aria-pressed=\"false\">地标巡览</button></nav>",
+      "css": ".ds-hud{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px;padding:7px;border:1px solid #fff8;border-radius:9px;background:var(--panel,rgba(251,252,243,.95));box-shadow:0 12px 40px #152f3326}.ds-tool{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;border:0;border-radius:5px;background:transparent;color:var(--ink,#15372f);padding:8px;font-size:11px;min-height:34px}.ds-tool:hover{background:#e1ede0}.ds-tool[aria-pressed=\"true\"],.ds-tool[aria-expanded=\"true\"]{background:#d6e7d3;color:#15372f}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    },
+    {
+      "name": "Directory search",
+      "kind": "input",
+      "refersTo": "search",
+      "description": "有可见标签的中文建筑即时搜索。",
+      "html": "<label class=\"ds-search-label\" for=\"ds-campus-search\">搜索建筑或公寓</label><input class=\"ds-search\" id=\"ds-campus-search\" type=\"search\" placeholder=\"试试：主楼、图书馆、14公寓\" autocomplete=\"off\">",
+      "css": ".ds-search-label{display:block;font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;font-size:11px;margin:0 0 7px;color:var(--muted,#4e675e)}.ds-search{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;color:var(--ink,#15372f);width:100%;border:1px solid #a9b9a3;border-radius:5px;padding:10px;background:white;font-size:12px;min-height:40px;accent-color:var(--accent,#175747);caret-color:var(--accent,#175747)}.ds-search::placeholder{color:#576c5f}.ds-search:focus-visible{outline:3px solid #a47b28;outline-offset:3px}"
+    },
+    {
+      "name": "Category filters",
+      "kind": "chip",
+      "refersTo": "category",
+      "description": "五个并列分类按钮与选中状态。",
+      "html": "<div class=\"ds-categories\" aria-label=\"建筑分类\"><button class=\"ds-chip\" aria-pressed=\"true\">全部</button><button class=\"ds-chip\" aria-pressed=\"false\">教学</button><button class=\"ds-chip\" aria-pressed=\"false\">生活</button><button class=\"ds-chip\" aria-pressed=\"false\">运动</button><button class=\"ds-chip\" aria-pressed=\"false\">出入口</button></div>",
+      "css": ".ds-categories{display:flex;gap:4px}.ds-chip{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;flex:1;padding:7px 4px;border:1px solid var(--line,#dce5d9);border-radius:4px;background:transparent;color:var(--ink,#15372f);font-size:10px}.ds-chip[aria-pressed=\"true\"]{background:var(--deep,#133b32);color:var(--paper,#fbfcf3);border-color:var(--deep,#133b32)}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    },
+    {
+      "name": "Building detail panel",
+      "kind": "card",
+      "refersTo": "directory",
+      "description": "纸面详情面板、辅助类别文字和附近漫游操作。",
+      "html": "<aside class=\"ds-detail\"><span class=\"ds-kind\">教学建筑</span><h2 class=\"ds-detail-title\">主楼</h2><p class=\"ds-detail-copy\">位置依据所提供的校园地图描绘，建筑层数、外立面与高度为程序化示意。</p><button class=\"ds-primary\" type=\"button\">到附近漫游</button></aside>",
+      "css": ".ds-detail{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;width:278px;max-width:100%;padding:19px;background:var(--paper,#fbfcf3);color:var(--ink,#15372f);border:1px solid var(--line,#dce5d9);border-radius:9px;box-shadow:0 12px 40px #152f3326}.ds-kind{font-size:10px;color:var(--muted,#4e675e)}.ds-detail-title{font-size:20px;margin:15px 0 8px}.ds-detail-copy{font-size:12px;line-height:1.8;color:var(--muted,#4e675e);margin:0 0 15px}.ds-primary{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;width:100%;padding:10px;border:1px solid var(--deep,#133b32);background:var(--deep,#133b32);color:var(--paper,#fbfcf3);border-radius:5px;font-size:12px}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    },
+    {
+      "name": "Scene label",
+      "kind": "custom",
+      "description": "带分类编号徽标的场景地点名称。",
+      "html": "<button class=\"ds-label\" type=\"button\"><i class=\"ds-code\">01</i>主楼</button>",
+      "css": ".ds-label{font-family:\"Microsoft YaHei\",\"PingFang SC\",\"Noto Sans CJK SC\",system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;padding:4px 8px 4px 5px;border:1px solid #dce5d9;border-radius:5px;background:#fcfcf2ed;box-shadow:0 2px 10px #203b352b;color:#244138;font-size:11px;line-height:1.35;font-weight:700}.ds-label:hover{background:#e1edda}.ds-code{font-style:normal;background:#245c4e;color:white;border-radius:3px;padding:1px 4px;font-size:9px;min-width:13px;text-align:center}.ds-primary:focus-visible,.ds-secondary:focus-visible,.ds-mode:focus-visible,.ds-tool:focus-visible,.ds-chip:focus-visible,.ds-label:focus-visible {outline:3px solid #d9a64d;outline-offset:3px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "校园画面与悬浮导览",
+    "overview": "这是对现有实现的描述性归档，不是新设的品牌方向。用户提供的原始 HTML 决定绿色导览界面、浅色浮层、程序化建筑细节，以及第一人称和俯瞰两种体验。全屏三维校园是主画面；工具、目录、详情和小地图以紧凑浮层辅助探索。\n\n界面保持中文优先的校园导览语气。低饱和绿、米白面板与场景中的暖色建筑和蓝灰窗格相接。建筑位置以用户地图人工描绘；地形、楼高、层数、外立面及场景单位均为示意。地图图面上方不能被当作已校准的地理正北。",
+    "keyCharacteristics": [
+      "全屏三维画面配悬浮导览，避免挤占校园视野。",
+      "深绿表示主要操作与当前模式，浅绿表示辅助工具或条目选择。",
+      "中文系统字体、紧凑信息密度、轻圆角与柔和投影。",
+      "保留原始建筑窗格、屋顶和地标差异，以用户地图约束平面布局。"
+    ],
+    "rules": [
+      {
+        "name": "The State Meaning Rule",
+        "body": "深绿整块填充表示主要操作或当前模式；辅助工具开启用浅绿填充，不能只靠颜色隐藏状态文字和 ARIA 状态。",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "**Do** 保持校园画面为主，使用紧凑的绿色悬浮导览。",
+      "**Do** 沿用中文字体栈、轻圆角、纸面与现有按钮状态语义。",
+      "**Do** 为画布操作保留目录、文字按钮和键盘入口。",
+      "**Do** 对照用户地图调整平面布局，并保留示意模型说明。",
+      "**Do** 保持减少动态偏好对自转和相机过渡生效。"
+    ],
+    "donts": [
+      "**Don't** 把手绘图面坐标、楼高或程序化立面描述为测绘或实景扫描成果。",
+      "**Don't** 擅自把地图上方命名为经过地理校准的正北。",
+      "**Don't** 用新的品牌配色、网络字体或大面积装饰替换原雏形的导览语言。",
+      "**Don't** 为扩大面板而长期遮挡校园主体，或把目录改成页面级滚动。",
+      "**Don't** 默认开启自转，或把支持 Pointer Lock 的要求隐藏起来。"
+    ]
+  }
+}

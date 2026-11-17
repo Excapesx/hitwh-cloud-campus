@@ -1,0 +1,60 @@
+<!doctype html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#153c35">
+<title>哈工威·云上校园</title>
+<!--STYLES-->
+
+</head>
+<body>
+  <div id="world" aria-label="哈工大威海三维校园"></div>
+  <div id="labels" aria-hidden="true" hidden></div>
+  <header hidden id="brand"><span class="mark" aria-hidden="true">HIT</span><div class="brand"><strong>哈工威·云上校园</strong><small>HIT WEIHAI</small></div></header>
+  <aside class="map" id="mapPanel" hidden aria-label="校园布局小地图"><div class="map-title"><span>校园导览</span><b>图面朝上</b></div><canvas id="map" width="320" height="440" aria-hidden="true"></canvas></aside>
+  <div id="crosshair" class="crosshair" aria-hidden="true" hidden></div>
+  <div id="aim" aria-hidden="true" hidden></div>
+  <article class="card" id="card" aria-live="polite" hidden><h2 id="cardTitle"></h2><p id="cardDescription"></p></article>
+  <nav id="hud" class="hud" aria-label="校园漫游控制" hidden>
+    <div class="modes"><button id="walk" type="button" aria-pressed="false">第一人称</button><button id="orbit" type="button" aria-pressed="true">俯瞰全校</button></div>
+    <div class="zoom" id="zoom"><button id="farther" type="button" aria-label="缩小">−</button><button id="nearer" type="button" aria-label="放大">+</button></div>
+    <div class="tools"><button id="directoryToggle" type="button" aria-controls="directory" aria-expanded="false">建筑目录</button><button id="referenceToggle" type="button">原图对照</button><button id="reset" type="button">复位</button><button id="labelsToggle" type="button" aria-pressed="true">标注</button><button id="rotateToggle" type="button" aria-pressed="false">自转</button><button id="tour" type="button" aria-pressed="false">地标巡览</button></div><span id="hint" aria-live="polite">拖拽旋转 · 滚轮缩放</span>
+  </nav>
+  <aside id="directory" class="directory" hidden aria-labelledby="directoryTitle">
+    <div class="panel-heading"><h2 id="directoryTitle">探索校园</h2><button id="directoryClose" type="button" aria-label="关闭建筑目录">关闭</button></div>
+    <label class="search-label" for="search">搜索建筑或公寓</label>
+    <input id="search" type="search" placeholder="试试：主楼、图书馆、14公寓" autocomplete="off">
+    <div id="categories" class="categories" aria-label="建筑分类"><button type="button" data-category="all" aria-pressed="true">全部</button><button type="button" data-category="study" aria-pressed="false">教学</button><button type="button" data-category="life" aria-pressed="false">生活</button><button type="button" data-category="sport" aria-pressed="false">运动</button><button type="button" data-category="gate" aria-pressed="false">出入口</button></div>
+    <p id="resultCount" class="result-count" role="status"></p>
+    <div id="buildingList" class="building-list"></div>
+    <div id="empty" class="empty" hidden><p>没有找到这栋建筑</p><button id="clearSearch" type="button">清除搜索与分类</button></div>
+    <p class="directory-note">建筑位置参照所提供地图；楼高与外观为示意。</p>
+  </aside>
+  <aside id="detail" class="detail" hidden aria-labelledby="detailTitle">
+    <div class="panel-heading"><span id="detailKind"></span><button id="detailClose" type="button" aria-label="关闭建筑详情">关闭</button></div>
+    <h2 id="detailTitle"></h2><p id="detailDescription"></p>
+    <button id="walkHere" type="button">到附近漫游</button>
+  </aside>
+  <p id="tourStatus" class="tour-status" hidden role="status"></p>
+  <p id="toast" class="toast" hidden role="status"></p>
+  <dialog id="reference" aria-labelledby="referenceTitle">
+    <div class="reference-heading"><div><h2 id="referenceTitle">校园原图对照</h2><p>用户提供的布局依据，图上信息与现场可能存在差异。</p></div><button id="referenceClose" type="button">关闭</button></div>
+    <div class="reference-image"><img src="__CAMPUS_MAP__" alt="哈尔滨工业大学（威海）校园地图：上部为山体与图书馆，中部为公寓、餐厅和教学区，下部为体育场、主楼、南门与研究院。"></div>
+  </dialog>
+
+  <div class="veil" id="start">
+    <main class="intro" aria-labelledby="title">
+      <p class="school-name">哈尔滨工业大学（威海）</p>
+      <h1 id="title">哈工威·云上校园</h1>
+      <p>依照校园地图，走进主楼、图书馆与体育场之间。选择俯瞰探索全校，或从南门开始第一人称漫游。</p>
+      <dl><dt>第一人称</dt><dd>WASD 移动 · 鼠标环顾 · E 查看建筑 · Esc 释放鼠标</dd><dt>俯瞰全校</dt><dd>拖拽旋转 · 滚轮或按钮缩放 · 双指缩放 · 点击建筑查看</dd></dl>
+      <div class="start-actions"><button id="startWalk" type="button" disabled>进入第一人称漫游</button><button id="startOrbit" type="button" disabled>俯瞰全校</button></div>
+      <p class="model-note">地图描绘 · 程序化三维示意，非实景扫描</p><button id="fallbackMap" type="button" hidden>查看校园原图</button><p id="boot" role="status">正在加载三维校园…</p>
+    </main>
+  </div>
+
+<!--APP-->
+</body>
+</html>

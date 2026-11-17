@@ -1,0 +1,4 @@
+# Generated bundle embeds upstream Three.js shader strings verbatim.
+index.html -whitespace
+# Preserve the supplied original HTML byte-for-byte across checkouts.
+reference/HITWH-Cloud-Campus.original.html -text

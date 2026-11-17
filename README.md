@@ -1,10 +1,59 @@
-# HITWH Cloud Campus
+# 哈工威 · 云上校园
 
-哈尔滨工业大学（威海）3D 实景云校园 HTML 项目。
+根据用户提供的校园地图，在原 `HITWH-Cloud-Campus.html` 雏形上完善的三维校园导览。保留原来的绿色界面、第一人称漫游、建筑碰撞与俯瞰模式，重新整理校园布局。
 
-## 项目来源
+## 直接使用
 
-- [现有雏形（ChatGPT Library 分享）](https://chatgpt.com/library/share/libfile_f6c9c7f225ac8191ac87b8c12f9682bb?account_id=personal)
-- 工作仓库：<https://github.com/Excapesx/hitwh-cloud-campus>
+下载仓库根目录的 **`index.html`**，用支持 WebGL 2 的 Chrome 或 Edge 双击打开。交付文件约 2.7 MB，已包含 Three.js、界面及原始地图，打开时不依赖 CDN 或网络。若设备不支持三维渲染，启动页提供查看原图入口。
 
-当前仓库已完成初始化，雏形 HTML 与相关素材尚未导入。
+## 本次完善
+
+- 依据地图描绘校园轮廓、北侧山体、西侧海岸、15 段主要道路与步道。
+- 69 处可检索地点，包括主楼、图书馆、宁学楼、体育场、公寓、餐厅和出入口。
+- 建筑目录、分类、搜索与无结果恢复；点击建筑或目录可聚焦镜头并查看说明。
+- 原图对照、镜头复位、标注开关、自转开关、六站地标巡览。
+- 保留 WASD 第一人称移动、鼠标环顾、E 查看与碰撞；可从选中建筑附近进入漫游。
+- 手机触摸旋转、双指缩放与窄屏控制栏；遵循系统减少动态效果设置。
+
+## 操作
+
+| 模式 | 操作 |
+| --- | --- |
+| 俯瞰 | 拖拽旋转；滚轮或加减按钮缩放；点击建筑定位 |
+| 键盘俯瞰 | 聚焦三维画面后，方向键旋转、`+` / `-` 缩放、`Home` 复位 |
+| 第一人称 | 桌面浏览器允许鼠标锁定后，WASD 移动、鼠标环顾、E 查看建筑、Esc 释放鼠标 |
+| 手机 | 单指旋转、双指缩放；通过目录选择地点 |
+
+“地标巡览”是依次查看六个地标的镜头演示，不提供步行路径或测距。自动旋转默认关闭。
+
+## 开发与构建
+
+需要 Node.js 与 npm。
+
+```sh
+npm ci
+npm run build
+npm run check
+npm run dev
+```
+
+预览地址：`http://127.0.0.1:4177`。修改源码后重新运行 `npm run build`，刷新预览。`index.html` 是可重复生成的交付物，与源码一同提交；无需把 `node_modules` 发给客户。
+
+| 路径 | 用途 |
+| --- | --- |
+| `src/index.html` / `src/styles.css` | 界面模板与样式 |
+| `src/app.js` | 保留并扩展的渲染、漫游、碰撞与界面交互 |
+| `src/campus-data.js` | 原图归一化坐标、地点、道路、湖泊与校园边界 |
+| `src/model.js` | 地形、道路及建筑体量生成 |
+| `assets/campus-map.png` | 用户提供的原图，已写入来源元数据 |
+| `reference/HITWH-Cloud-Campus.original.html` | 用户原雏形，原样保存用于对照 |
+| `LICENSES/three.txt` | Three.js 的 MIT 许可；同时嵌入交付 HTML |
+| `docs/VALIDATION.md` | 本次验证记录与范围 |
+
+## 精度与素材
+
+当前是**地图驱动的程序化三维示意模型**。平面布局参照用户地图人工描绘，建筑高度、层数、立面、简化轮廓及绿化为示意；场景单位不等于测绘米数。地图日期及当前现场开放情况未核实。本项目不宣称实景扫描、测绘精度或实时导航。
+
+如需照片级实景，应进一步提供楼宇照片、无人机影像、测绘坐标或经授权的 glTF/GLB、摄影测量或 3D Gaussian Splatting 数据。
+
+项目仓库：[Excapesx/hitwh-cloud-campus](https://github.com/Excapesx/hitwh-cloud-campus)。原 HTML 与地图来自用户提供，保留其原有权利；本仓库不额外授予这些素材的使用许可。

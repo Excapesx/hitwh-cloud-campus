@@ -1,0 +1,19 @@
+# 校园导览界面
+
+## Direction contract
+
+THESIS：在用户原雏形上校准地图并完善可用性，保留绿色浮动控制栏与三维画面优先的结构。
+
+OWN-WORLD：继承原雏形的深绿文字、浅绿地形、米白面板和偏蓝海面，保留已有窗格、屋顶、树木和建筑拾取方式。
+
+STORY：用户从俯瞰或第一人称进入校园，通过建筑目录、搜索或点击识别地标；可打开用户原图校对位置。
+
+FIRST VIEWPORT：全屏三维校园，左上品牌、右上布局小地图、底部控制栏；目录与详情按需出现，手机控制栏换为两行。
+
+FORM：原雏形的局部扩展；地图相对位置为约束，不替换原有视觉世界。采用源码拆分、构建单文件 HTML 的方式。无批准的新视觉稿。
+
+FINISH：unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+## 完成证据
+
+独立复核 disposition：ship。桌面与手机俯瞰截图、源码已复核；浏览器交互、离线文件与第一人称移动另见 VALIDATION.md。原图有来源元数据；没有生成式图片素材。
