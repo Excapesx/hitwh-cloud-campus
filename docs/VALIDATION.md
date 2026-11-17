@@ -4,6 +4,8 @@
 
 南门照片细化的后续验证单独记录在 [SOUTH-GATE.md](SOUTH-GATE.md)。
 
+日间材质、环境反射、局部阴影及接触阴影的后续验证记录在 [REALISM.md](REALISM.md)。
+
 ## 已验证
 
 - `npm run build`：生成约 2.68 MB 的单文件 `index.html`。

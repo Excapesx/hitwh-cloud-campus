@@ -15,6 +15,7 @@
 - 保留 WASD 第一人称移动、鼠标环顾、E 查看与碰撞；可从选中建筑附近进入漫游。
 - 手机触摸旋转、双指缩放与窄屏控制栏；遵循系统减少动态效果设置。
 - 南门已依据三张实景照片细化三通道拱门、槽纹柱、檐口、校名牌匾、敞开铁艺门及门前设施；入口页可选择“查看南门细节”。详见 [南门细化说明](docs/SOUTH-GATE.md)。
+- 增加墙面与沥青纹理、石材微起伏、玻璃和金属反射、日光天空及局部高清阴影；桌面南门近景包含接触阴影。详见 [材质光影说明](docs/REALISM.md)。
 
 ## 操作
 
@@ -47,6 +48,7 @@ npm run dev
 | `src/campus-data.js` | 原图归一化坐标、地点、道路、湖泊与校园边界 |
 | `src/model.js` | 地形、道路及建筑体量生成 |
 | `src/south-gate.js` | 南门照片细化模型、材质合并与局部碰撞体 |
+| `src/realism.js` | 程序化表面、日光环境、局部阴影与近景后期处理 |
 | `assets/campus-map.png` | 用户提供的原图，已写入来源元数据 |
 | `reference/HITWH-Cloud-Campus.original.html` | 用户原雏形，原样保存用于对照 |
 | `LICENSES/three.txt` | Three.js 的 MIT 许可；同时嵌入交付 HTML |

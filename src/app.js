@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
+import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
  console.error(error);el('boot').textContent='三维场景未能启动。请用支持 WebGL 2 的 Chrome 或 Edge 打开；也可以查看原始地图。';
@@ -21,27 +22,9 @@ function init(T, PointerLockControls) {
   const orbitCam = new T.PerspectiveCamera(42, 1, 14, 3250);
   const renderer = new T.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
   renderer.outputColorSpace = T.SRGBColorSpace;
-  renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.20;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = T.PCFSoftShadowMap;
-  // 光源与场景静止，只需生成一次阴影贴图。
-  renderer.shadowMap.autoUpdate = false;
-  renderer.shadowMap.needsUpdate = true;
   const canvas = renderer.domElement;
   el('world').append(canvas);
-  const sun = new T.DirectionalLight(0xfff2d5, 2.0);
-  sun.position.set(-210, 300, 120);
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = sun.shadow.camera.bottom = -390;
-  sun.shadow.camera.right = sun.shadow.camera.top = 390;
-  sun.shadow.camera.near = 10;
-  sun.shadow.camera.far = 850;
-  sun.shadow.camera.updateProjectionMatrix();
-  sun.shadow.normalBias = .29;
-  sun.shadow.bias = -.00014;
-  sun.castShadow = true;
-  scene.add(sun, new T.HemisphereLight(0xe9f7ff, 0x999778, 2.05));
+  const rendering=setupRealisticRendering(T,renderer,scene);
 
   // ── 材质 ── 用共享几何与材质建模，窗格按材质批量实例化。
   const mat = (color, options) => new T.MeshStandardMaterial({ color, roughness:.87, ...options });
@@ -56,6 +39,10 @@ function init(T, PointerLockControls) {
     track:mat(0xa65d49), brass:mat(0xe3ca8f,{ metalness:.2 }), bark:mat(0x745e48),
     needles:mat(0xffffff,{ roughness:1 })
   };
+  m.wall=surfaceMaterial(T,'plaster',{color:0xe5cda8,roughness:.9});
+  m.light=surfaceMaterial(T,'stone',{color:0xf2e3c4,roughness:.8});
+  m.dorm=surfaceMaterial(T,'plaster',{color:0xdcc3a8,roughness:.91});
+  m.asphalt=surfaceMaterial(T,'asphalt',{color:0x434947,roughness:.93});
   const boxGeometry = new T.BoxGeometry(1,1,1);
   const cylinderGeometry = new T.CylinderGeometry(1,1,1,48);
   const colliders = [];
@@ -179,7 +166,14 @@ function init(T, PointerLockControls) {
   for(let attempts=0;treeSites.length<treeCount && attempts<30000;attempts++)plant(-236+445*random(),-315+630*random());
 
   const trunks=new T.InstancedMesh(new T.CylinderGeometry(.69,1,1,6),m.bark,treeCount);
-  const cone=new T.ConeGeometry(1,1,6);
+  const cone=new T.ConeGeometry(1,1,14,9);
+  const crownPositions=cone.attributes.position;
+  for(let i=0;i<crownPositions.count;i++) {
+    const x=crownPositions.getX(i),y=crownPositions.getY(i),z=crownPositions.getZ(i),a=Math.atan2(z,x);
+    const fringe=1+.09*Math.sin(y*55+a*7)+.045*Math.cos(a*17-y*12);
+    crownPositions.setXYZ(i,x*fringe,y,z*fringe);
+  }
+  cone.computeVertexNormals();
   const crowns=new T.InstancedMesh(cone,m.needles,treeCount);
   const tips=new T.InstancedMesh(cone,m.needles,treeCount);
   const treeTints=[0x527e55,0x58845c,0x467453,0x709657,0x59855b].map(c=>new T.Color(c));
@@ -207,6 +201,7 @@ function init(T, PointerLockControls) {
   }
 
   // ── 控制 ── 漫游与俯瞰各用一台相机；只有已锁定时才让 WASD 更新玩家。
+  addGatePlanting(T,scene);
   const controls=new PointerLockControls(walkCam,canvas);
   controls.minPolarAngle=.055;
   controls.maxPolarAngle=Math.PI-.055;
@@ -618,13 +613,14 @@ function init(T, PointerLockControls) {
   renderList();
   el('startSouthGate').addEventListener('click',()=>focusEntry(landmarks.find(e=>e.id==='doorSouth')));
   if(location.hash==='#south-gate')focusEntry(landmarks.find(e=>e.id==='doorSouth'));
-  window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
+  window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
 
   // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
   function resize() {
     const w=Math.max(1,innerWidth), h=Math.max(1,innerHeight);
     renderer.setPixelRatio(Math.min(devicePixelRatio||1,w<700?1.35:1.65));
     renderer.setSize(w,h);
+    rendering.resize(w,h);
     for(const camera of [walkCam,orbitCam]) {
       camera.aspect=w/h;
       camera.updateProjectionMatrix();
@@ -675,7 +671,8 @@ function init(T, PointerLockControls) {
       updateMap();
       lastMap=now;
     }
-    renderer.render(scene,mode==='orbit'?orbitCam:walkCam);
+    const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<180:Math.hypot(walkCam.position.x-54.45,walkCam.position.z-297)<85;
+    rendering.render(mode==='orbit'?orbitCam:walkCam,nearGate);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

@@ -13,7 +13,8 @@
         "column": "#c9b58d",
         "iron": "#263331",
         "glass": "#587781",
-        "road": "#535958",
+        "road": "#434947",
+        "paving": "#d4cfbb",
         "steel": "#c6cecc"
       }
     },

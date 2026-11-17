@@ -1,4 +1,6 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { surfaceMaterial } from './realism.js';
 
 // 尺寸为依据三张照片估计的场景比例，不作为实测尺寸。
 // 将通道与实心部分分开登记，拱顶的拾取包围盒不会堵住地面通行。
@@ -11,18 +13,19 @@ export const southGateSolids = [
 
 export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
   const materials={
-    wall:new T.MeshStandardMaterial({color:0xd1b786,roughness:.94}),
-    trim:new T.MeshStandardMaterial({color:0xe5dfca,roughness:.8}),
-    shade:new T.MeshStandardMaterial({color:0xb49b74,roughness:.91}),
-    column:new T.MeshStandardMaterial({color:0xc9b58d,roughness:.84}),
-    iron:new T.MeshStandardMaterial({color:0x263331,roughness:.48,metalness:.57}),
-    glass:new T.MeshStandardMaterial({color:0x587781,roughness:.3,metalness:.22}),
-    road:new T.MeshStandardMaterial({color:0x535958,roughness:1}),
+    wall:surfaceMaterial(T,'plaster',{color:0xd1b786,roughness:.91}),
+    trim:surfaceMaterial(T,'stone',{color:0xe5dfca,roughness:.68}),
+    shade:surfaceMaterial(T,'stone',{color:0xb49b74,roughness:.89}),
+    column:surfaceMaterial(T,'stone',{color:0xc9b58d,roughness:.73}),
+    iron:surfaceMaterial(T,'metal',{color:0x263331,roughness:.35,metalness:.7}),
+    glass:new T.MeshPhysicalMaterial({color:0x587781,roughness:.12,metalness:0,clearcoat:1,clearcoatRoughness:.08,ior:1.5}),
+    road:surfaceMaterial(T,'asphalt',{color:0x434947,roughness:.93}),
+    paving:surfaceMaterial(T,'paving',{color:0xd4cfbb,roughness:.83}),
     white:new T.MeshStandardMaterial({color:0xf1eee1,roughness:.8}),
     yellow:new T.MeshStandardMaterial({color:0xd8b759,roughness:.85}),
     red:new T.MeshStandardMaterial({color:0xaf5541,roughness:.8}),
     hedge:new T.MeshStandardMaterial({color:0x536e43,roughness:1}),
-    steel:new T.MeshStandardMaterial({color:0xc6cecc,roughness:.58,metalness:.35})
+    steel:surfaceMaterial(T,'metal',{color:0xc6cecc,roughness:.26,metalness:.78})
   };
   const buckets=new Map();
   function emit(geometry,material,transform,cast=true) {
@@ -33,7 +36,8 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     buckets.get(key).parts.push(geo);
   }
   function block(x,y,z,w,h,d,material,cast=true) {
-    const geo=new T.BoxGeometry(w,h,d);geo.translate(x,y+h/2,z);emit(geo,material,null,cast);
+    const radius=Math.min(.045,h*.16,d*.08,w*.08);
+    const geo=cast?new RoundedBoxGeometry(w,h,d,1,radius):new T.BoxGeometry(w,h,d);geo.translate(x,y+h/2,z);emit(geo,material,null,cast);
   }
   function cylinder(x,y,z,lower,upper,h,material,segments=28) {
     const geo=new T.CylinderGeometry(upper,lower,h,segments);geo.translate(x,y+h/2,z);emit(geo,material);
@@ -127,7 +131,7 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
   ctx.font='700 205px "KaiTi","STKaiti","楷体",serif';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.shadowColor='#f4e5bd';ctx.shadowOffsetX=-2;ctx.shadowOffsetY=-3;ctx.shadowBlur=1;ctx.fillStyle='#725733';ctx.fillText('哈尔滨工业大学',1024,153,1840);
   const texture=new T.CanvasTexture(signCanvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
-  const signMat=new T.MeshStandardMaterial({map:texture,roughness:.74});
+  const signMat=new T.MeshStandardMaterial({map:texture,bumpMap:texture,bumpScale:.018,roughness:.5,metalness:.12});
   block(0,10.13,2.48,11.7,1.73,.15,materials.shade);
   const sign=new T.PlaneGeometry(11.45,1.54);sign.translate(0,10.995,2.568);emit(sign,signMat);
 
@@ -146,7 +150,7 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
   block(0,-5.4,7,33,5.55,46,materials.shade,false);
   block(0,.15,7,24,.12,46,materials.road,false);
   for(const side of [-1,1]) {
-    block(side*14,.15,7,4,.15,46,materials.trim,false);
+    block(side*14,.15,7,4,.15,46,materials.paving,false);
     block(side*12,.16,7,.22,.32,46,materials.trim,false);
     block(side*10.8,.287,7,.13,.018,45,materials.white,false);
     block(side*.18,.287,7,.1,.018,45,materials.yellow,false);
@@ -178,7 +182,7 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     }
     geo.computeVertexNormals();emit(geo,material,null,false);
   }
-  apronRamp(-16.5,16.5,materials.trim,0);
+  apronRamp(-16.5,16.5,materials.paving,0);
   apronRamp(-12,12,materials.road,.015);
   for(const solid of southGateSolids)addCollider(entry.x+solid.x,solid.y,entry.z+solid.z,solid.w,solid.h,solid.d);
   entry.faces.push({x:entry.x,z:entry.z,w:43.2,d:6.4});entry.top=14.37;
