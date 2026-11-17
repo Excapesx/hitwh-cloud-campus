@@ -4,9 +4,16 @@
   "title": "Design System: 哈工威·云上校园",
   "extensions": {
     "sceneMaterials": {
+      "colonnade": {
+        "source": "src/colonnade.js",
+        "scope": "Photo-referenced paired fluted columns, leaf capitals, masonry pedestals and curved entablature",
+        "ashlar": ["#9da397", "#a6aba1", "#989f95", "#adb2a7"],
+        "frieze": "#65716a",
+        "flashing": "#67756c"
+      },
       "mainBuilding": {
         "source": "src/main-axis.js",
-        "scope": "Five user-supplied main-building photos; facade faces south gate along the shared campus axis",
+        "scope": "User-supplied facade photos and aerial axis references; facade faces south gate with visually calibrated proportions",
         "stone": "#e1e5dc",
         "trim": "#f0eee0",
         "recess": "#b8c4bd",

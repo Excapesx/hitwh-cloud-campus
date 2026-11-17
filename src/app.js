@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis } from './campus-data.js';
+import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis, gateScale, colonnadeLayout, colonnadePoint } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
 import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
 import { createWeatherSystem } from './weather.js';
@@ -160,11 +160,11 @@ function init(T, PointerLockControls) {
   function treeAllowed(x,z) {
     if(!inside(x,z))return false;
     const axis=campusAxis.project(x,z);
-    if(axis.distance>-10&&axis.distance<58&&Math.abs(axis.lateral)<34)return false;
-    if(axis.distance>=58&&axis.distance<campusAxis.length&&Math.abs(axis.lateral)<11)return false;
+    if(axis.distance>-10&&axis.distance<campusAxis.colonnade+5&&Math.abs(axis.lateral)<38)return false;
+    if(axis.distance>=campusAxis.colonnade+5&&axis.distance<campusAxis.length&&Math.abs(axis.lateral)<24)return false;
     if(roads.some(r=>distanceToRoad(x,z,r)<r.width/2+2))return false;
     if(buildings.some(b=>Math.abs(x-b.x)<b.w/2+3 && Math.abs(z-b.z)<b.d/2+3))return false;
-    if(lakes.some(l=>{const a=world(...l.points[0]);return Math.hypot(x-a.x,z-a.z)<13;}))return false;
+    if(lakes.some(l=>{const points=l.points.map(p=>world(...p));return x>Math.min(...points.map(p=>p.x))-2&&x<Math.max(...points.map(p=>p.x))+2&&z>Math.min(...points.map(p=>p.z))-2&&z<Math.max(...points.map(p=>p.z))+2;}))return false;
     return treeSites.every(p=>(p.x-x)**2+(p.z-z)**2>18);
   }
   function plant(x,z) { if(treeAllowed(x,z))treeSites.push({x,z,size:3.7+random()*4.1,angle:random()*Math.PI}); }
@@ -223,7 +223,7 @@ function init(T, PointerLockControls) {
   let dragX=0, dragY=0, azimuth=.14, elevation=.98, radius=950, targetRadius=950, dragEndedAt=-Infinity;
   const orbitTarget=new T.Vector3(-12,7,0);
   const targetGoal=orbitTarget.clone();
-  let autoRotate=false,labelsVisible=true,selected=null,tourIndex=-1,tourAt=0,viewingAxis=false;
+  let autoRotate=false,labelsVisible=true,selected=null,tourIndex=-1,tourAt=0,viewingAxis=false,detailFocus='main';
   const landing=world(841,1484);
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const pointerAvailable=typeof canvas.requestPointerLock==='function' && matchMedia('(any-pointer: fine)').matches;
@@ -328,14 +328,14 @@ function init(T, PointerLockControls) {
   canvas.addEventListener('pointermove',event=>{
     if(event.pointerId!==dragId) return;
     azimuth-=(event.clientX-dragX)*.006;
-    elevation=clamp(elevation+(event.clientY-dragY)*.006,.04,1.39);
+    elevation=clamp(elevation+(event.clientY-dragY)*.006,detailFocus==='colonnade'?-.18:.04,1.39);
     dragX=event.clientX;
     dragY=event.clientY;
   });
   for(const type of ['pointerup','pointercancel','lostpointercapture']) canvas.addEventListener(type,event=>{
     if(event.pointerId===dragId) cancelDrag();
   });
-  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,selected?.id==='doorSouth'?28:95,1200); }
+  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,selected?.id==='doorSouth'?12:detailFocus==='colonnade'?10:selected?.id==='main'?45:95,1200); }
   canvas.addEventListener('wheel',event=>{
     if(mode!=='orbit' || !started) return;
     event.preventDefault();
@@ -494,7 +494,7 @@ function init(T, PointerLockControls) {
   const mapColors={study:'#46786c',life:'#b17c59',sport:'#528497',gate:'#897646'};
   for(const entry of landmarks){base.fillStyle=mapColors[entry.kind];for(const f of entry.faces)mapRect(base,f.x,f.z,f.w,f.d);}
   base.strokeStyle='#d0bc85';base.lineWidth=2;base.beginPath();
-  for(let i=0;i<=24;i++){const a=-1.18+2.36*i/24,p=campusAxis.at(campusAxis.colonnade+23*(Math.cos(a)-1),Math.sin(a)*23);i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z));}base.stroke();
+  for(let i=0;i<=24;i++){const a=-colonnadeLayout.halfAngle+2*colonnadeLayout.halfAngle*i/24,local=colonnadePoint(a),p=campusAxis.at(local.z,local.x);i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z));}base.stroke();
   const stonePoint=campusAxis.at(campusAxis.motto);base.fillStyle='#b28552';base.beginPath();base.arc(mx(stonePoint.x),mz(stonePoint.z),2.4,0,Math.PI*2);base.fill();
   base.strokeStyle='#a65d49';base.lineWidth=4;base.beginPath();base.ellipse(mx(field.x),mz(field.z),field.spec.w/2*mapScale,field.spec.d/2*mapScale,0,0,Math.PI*2);base.stroke();
 
@@ -554,8 +554,10 @@ function init(T, PointerLockControls) {
     selectOrbit();selected=entry;
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
     targetRadius=Math.max(160,Math.max(entry.spec.w,entry.spec.d)*3.6);
-    if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5,entry.z);targetRadius=63;azimuth=0;elevation=.055; }
-    if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,13,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
+    if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5*gateScale,entry.z);targetRadius=63*gateScale;azimuth=0;elevation=.055; }
+    if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,10.5,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
+    detailFocus='main';el('colonnadeView').hidden=entry.id!=='main';el('colonnadeView').textContent='查看柱廊细节';
+    orbitCam.near=entry.id==='doorSouth'?.35:entry.id==='main'?1.5:14;orbitCam.updateProjectionMatrix();
     viewingAxis=false;el('axisView').hidden=entry.id!=='main';el('axisView').textContent='查看完整中轴线';
     el('detailTitle').textContent=entry.name;el('detailKind').textContent=categoryNames[entry.kind];el('detailDescription').textContent=entry.description;
     el('detail').hidden=false;el('card').hidden=true;
@@ -564,6 +566,7 @@ function init(T, PointerLockControls) {
     for(const button of el('buildingList').children)button.setAttribute('aria-pressed',String(button.dataset.id===entry.id));
   }
   function resetView() {
+    detailFocus='main';orbitCam.near=14;orbitCam.updateProjectionMatrix();
     stopTour();selectOrbit();targetGoal.set(-12,7,0);azimuth=.14;elevation=.98;targetRadius=950;
     selection.visible=false;selected=null;el('detail').hidden=true;renderList();
   }
@@ -587,12 +590,21 @@ function init(T, PointerLockControls) {
   el('tour').addEventListener('click',()=>{if(tourIndex>=0){stopTour();return;}tourIndex=0;el('tour').setAttribute('aria-pressed','true');el('tour').textContent='停止巡览';el('tourStatus').hidden=false;nextStop(performance.now());});
   el('detailClose').addEventListener('click',()=>{el('detail').hidden=true;selection.visible=false;});
   function showAxis() {
-    const entry=landmarks.find(e=>e.id==='main');if(selected!==entry)focusEntry(entry);
-    selectOrbit();stopTour();viewingAxis=true;
+    const entry=landmarks.find(e=>e.id==='main');focusEntry(entry);
+    selectOrbit();stopTour();viewingAxis=true;detailFocus='axis';
+    orbitCam.near=14;orbitCam.updateProjectionMatrix();
     const p=campusAxis.at(92);targetGoal.set(p.x,3,p.z);targetRadius=270;azimuth=campusAxis.yaw+.12;elevation=.72;
     el('axisView').textContent='查看主楼正面';
   }
   el('axisView').addEventListener('click',()=>viewingAxis?focusEntry(landmarks.find(e=>e.id==='main')):showAxis());
+  function showColonnade() {
+    const entry=landmarks.find(e=>e.id==='main');focusEntry(entry);detailFocus='colonnade';
+    const compact=innerWidth<700,p=campusAxis.at(campusAxis.colonnade-1.5,compact?0:-3);targetGoal.set(p.x,3.7,p.z);targetRadius=27;azimuth=campusAxis.yaw+(compact?0:-.62);elevation=compact?.025:-.055;
+    orbitCam.near=.35;orbitCam.updateProjectionMatrix();
+    el('detailTitle').textContent='主楼前弧形柱廊';el('detailDescription').textContent='双排凹槽立柱、叶饰柱头、错缝石砌基座与弧形叠层檐口，按用户近景照片细化；拖拽可从廊下检查构件。';
+    el('colonnadeView').textContent='返回主楼正面';
+  }
+  el('colonnadeView').addEventListener('click',()=>detailFocus==='colonnade'?focusEntry(landmarks.find(e=>e.id==='main')):showColonnade());
   el('walkHere').disabled=!pointerAvailable;
   el('walkHere').addEventListener('click',()=>{
     if(!selected)return;stopTour();const s=selected.spec;let safe=null;
@@ -626,7 +638,7 @@ function init(T, PointerLockControls) {
     if(mode!=='orbit')return;
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','+','-','='].includes(event.key))event.preventDefault();
     if(event.key==='ArrowLeft')azimuth-=.1;if(event.key==='ArrowRight')azimuth+=.1;
-    if(event.key==='ArrowUp')elevation=clamp(elevation+.08,.04,1.39);if(event.key==='ArrowDown')elevation=clamp(elevation-.08,.04,1.39);
+    if(event.key==='ArrowUp')elevation=clamp(elevation+.08,detailFocus==='colonnade'?-.18:.04,1.39);if(event.key==='ArrowDown')elevation=clamp(elevation-.08,detailFocus==='colonnade'?-.18:.04,1.39);
     if(event.key==='Home')resetView();if(event.key==='+'||event.key==='=')zoomBy(.82);if(event.key==='-')zoomBy(1/.82);
   });
   // 自动巡览不能与手动漫游争用相机。
@@ -638,13 +650,21 @@ function init(T, PointerLockControls) {
     if(location.hash==='#south-gate')focusEntry(landmarks.find(e=>e.id==='doorSouth'));
     if(location.hash==='#main')focusEntry(landmarks.find(e=>e.id==='main'));
     if(location.hash==='#main-axis')showAxis();
+    if(location.hash==='#colonnade')showColonnade();
   }
   window.addEventListener('hashchange',openHash);openHash();
   window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality,weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
 
   // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
+  let lastCompact=null;
   function resize() {
     const w=Math.max(1,innerWidth), h=Math.max(1,innerHeight);
+    const compact=w<700;
+    if(detailFocus==='colonnade'&&compact!==lastCompact) {
+      const p=campusAxis.at(campusAxis.colonnade-1.5,compact?0:-3);targetGoal.set(p.x,3.7,p.z);
+      azimuth=campusAxis.yaw+(compact?0:-.62);elevation=compact?.025:-.055;
+    }
+    lastCompact=compact;
     if(w<700&&!el('weatherPanel').hidden)el('detail').hidden=true;
     renderer.setPixelRatio(Math.min(devicePixelRatio||1,w<700?1.35:1.65));
     renderer.setSize(w,h);
@@ -692,6 +712,7 @@ function init(T, PointerLockControls) {
       orbitCam.position.set(orbitTarget.x+Math.sin(azimuth)*flat,
                             orbitTarget.y+r*Math.sin(elevation),
                             orbitTarget.z+Math.cos(azimuth)*flat);
+      if(detailFocus==='colonnade')orbitCam.position.y=Math.max(1.65,orbitCam.position.y);
       orbitCam.lookAt(orbitTarget);
       orbitCam.updateMatrixWorld();
       updateLabels();
@@ -700,9 +721,11 @@ function init(T, PointerLockControls) {
       updateMap();
       lastMap=now;
     }
-    const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<180:Math.hypot(walkCam.position.x-54.45,walkCam.position.z-297)<85;
+    const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<100:Math.hypot(walkCam.position.x-54.45,walkCam.position.z-297)<42;
     const nearMain=mode==='orbit'?selected?.id==='main'&&!viewingAxis&&radius<160:Math.hypot(walkCam.position.x-campusAxis.origin.x,walkCam.position.z-campusAxis.origin.z)<82;
-    const detailArea=nearGate?'gate':nearMain?'main':false;
+    const columnCenter=campusAxis.at(campusAxis.colonnade);
+    const nearColumn=mode==='orbit'?selected?.id==='main'&&detailFocus==='colonnade':Math.hypot(walkCam.position.x-columnCenter.x,walkCam.position.z-columnCenter.z)<21;
+    const detailArea=nearGate?'gate':nearColumn?'colonnade':nearMain?'main':false;
     const activeCamera=mode==='orbit'?orbitCam:walkCam;
     const fit=mode==='orbit'?fitDistance():1;
     weather.update(elapsed,activeCamera,detailArea,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});

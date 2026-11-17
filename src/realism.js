@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { world, height, campusAxis } from './campus-data.js';
+import { world, height, campusAxis, gateScale } from './campus-data.js';
 
 // 世界坐标材质：细部尺度不随几何的 UV 展开或合批而改变；没有外部贴图请求。
 const surfaceGLSL=`
@@ -136,10 +136,10 @@ export function setupRealisticRendering(T,renderer,scene) {
   const supportsAO=renderer.extensions.has('EXT_color_buffer_float');
   function setShadowArea(close) {
     if(detailed===close)return;detailed=close;
-    const main=campusAxis.at(16);
-    target.set(close==='main'?main.x:close?gate.x:-12,close==='main'?14:close?4:0,close==='main'?main.z:close?gate.z:0);
+    const main=campusAxis.at(close==='colonnade'?campusAxis.colonnade:16),isMain=close==='main'||close==='colonnade';
+    target.set(isMain?main.x:close?gate.x:-12,close==='colonnade'?3:close==='main'?12:close?4*gateScale:0,isMain?main.z:close?gate.z:0);
     moveSun();
-    const span=close==='main'?84:close?66:390;
+    const span=close==='colonnade'?25:close==='main'?84:close?31:390;
     sun.shadow.camera.left=sun.shadow.camera.bottom=-span;sun.shadow.camera.right=sun.shadow.camera.top=span;
     sun.shadow.camera.updateProjectionMatrix();sun.target.updateMatrixWorld();sun.updateMatrixWorld();renderer.shadowMap.needsUpdate=true;
   }
@@ -172,7 +172,7 @@ export function setupRealisticRendering(T,renderer,scene) {
 
 export function addGatePlanting(T,scene) {
   const gate=world(841,1510),sites=[];
-  for(const side of [-1,1])for(let n=0;n<3;n++)sites.push({x:gate.x+side*(25+n*1.5),z:gate.z-8-n*15,h:12+n*1.5});
+  for(const side of [-1,1])for(let n=0;n<3;n++)sites.push({x:gate.x+side*(12+n*1.3),z:gate.z-7-n*10.5,h:7.2+n*.6});
   const foliageGeo=new T.SphereGeometry(1,12,8),p=foliageGeo.attributes.position;
   for(let i=0;i<p.count;i++) {
     const x=p.getX(i),y=p.getY(i),z=p.getZ(i),r=1+.11*Math.sin(x*13+y*17+z*11);p.setXYZ(i,x*r,y*r,z*r);

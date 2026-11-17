@@ -6,7 +6,7 @@ export function buildTerrain({T,mesh,box,m}) {
   const shape=new T.Shape(outline.map(p=>new T.Vector2(p.x,-p.z)));
   const slab=new T.ExtrudeGeometry(shape,{depth:5,bevelEnabled:false});
   slab.rotateX(-Math.PI/2);
-  mesh(slab,m.deepGrass,0,-5,0,false);
+  mesh(slab,m.deepGrass,0,-5.15,0,false);
   const geo=new T.PlaneGeometry(490,680,122,170); geo.rotateX(-Math.PI/2); geo.translate(-10,0,0);
   const p=geo.attributes.position, colors=new Float32Array(p.count*3), color=new T.Color();
   for(let i=0;i<p.count;i++) {
@@ -53,16 +53,19 @@ export function buildCampus(c) {
     for(let i=1;i<raw.length;i++) roads.push({a:raw[i-1],b:raw[i],width:line.width});
   }
   for(const p of paths) ribbon(p,1.45,m.path,.34);
-  function lake(points) {
-    const shape=new T.Shape(points.map(([x,y])=>{const p=world(x,y);return new T.Vector2(p.x,-p.z);}));
+  function lake(points,smooth=false) {
+    let polygon=points.map(([x,y])=>{const p=world(x,y);return new T.Vector2(p.x,-p.z);});
+    if(smooth){const curve=new T.CatmullRomCurve3(polygon.map(p=>new T.Vector3(p.x,0,-p.y)),true,'centripetal');polygon=curve.getPoints(100).map(p=>new T.Vector2(p.x,-p.z));
+      mesh(new T.TubeGeometry(curve,100,.13,6,true),m.stone,0,.46,0,false);}
+    const shape=new T.Shape(polygon);
     const geo=new T.ShapeGeometry(shape,20);geo.rotateX(-Math.PI/2);mesh(geo,m.water,0,.35,0,false);
   }
-  lakes.forEach(l=>lake(l.points));
+  lakes.forEach(l=>lake(l.points,l.smooth));
   const plaza=world(873,1232); paving(plaza.x,plaza.z,74,35,m.stone,.12);
   const fieldEntries=[];
   for(const spec of buildings) {
     const {name,id,x,z,w,d,floors,kind,shape,minor}=spec;
-    const desc=id==='main'?'依据五张实景照片修正：正面与两翼前庭朝向南门，中央为逐层收分的塔冠、巨柱与入口雨棚。主楼、前方弧形柱廊、校训石和南门共用一条中轴线；尺寸为照片比例估计。':id==='doorSouth'?'依据三张实景照片细化：中央大拱、两侧门廊、槽纹立柱、叠层檐口与校名牌匾。铁艺门保持敞开，可从门前走入校园；尺寸为照片估计。':kind==='gate'?'地图标注的校园出入口。门头体量为示意，请以现场开放情况为准。':
+    const desc=id==='main'?'依据实景与航拍照片细化：正面与两翼前庭朝向南门，塔冠、窗框、巨柱和入口雨棚采用独立构件。主楼、双排弧形柱廊、校训石与南门保持同一中轴；比例为照片估计。':id==='doorSouth'?'依据三张实景照片细化：中央大拱、两侧门廊、槽纹立柱、叠层檐口与校名牌匾。铁艺门保持敞开，可从门前走入校园；尺寸为照片估计。':kind==='gate'?'地图标注的校园出入口。门头体量为示意，请以现场开放情况为准。':
       name+'的位置依据所提供的校园地图描绘，建筑层数、外立面与高度为程序化示意。';
     const entry=landmark(name,id,desc,x,z,kind,['main','library','stadium','doorSouth'].includes(id)?0:minor?3:1);
     Object.assign(entry,{id,spec});

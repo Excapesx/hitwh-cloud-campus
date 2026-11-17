@@ -2,11 +2,16 @@
 // 场景单位仅用于展示，不代表实际米数；楼高、立面均为示意。
 export const MAP = { width:1334, height:1888, scale:.45, originX:720, originY:850 };
 export const world = (x,y) => ({x:(x-MAP.originX)*MAP.scale,z:(y-MAP.originY)*MAP.scale});
+// 总览照片校准建筑之间的相对尺度；南门保留细部原模型，仅统一场景比例。
+export const gateScale=.44;
+export const mainScale={x:1.1,y:.82,z:1};
+export const colonnadeLayout={radius:24,halfAngle:.7,pairs:12,rowOffset:.72,pedestal:.74,columnTop:5.35,roofTop:6.28};
+export function colonnadePoint(angle,offset=0) {const r=colonnadeLayout.radius+offset;return {x:Math.sin(angle)*r,z:campusAxis.colonnade-colonnadeLayout.radius+Math.cos(angle)*r};}
 // 照片与用户纠正：主楼正面朝向南门。沿两者连线组织前庭、柱廊和校训石。
 export const campusAxis=(()=>{
   const origin=world(879,1141),end=world(841,1510),length=Math.hypot(end.x-origin.x,end.z-origin.z);
   const front={x:(end.x-origin.x)/length,z:(end.z-origin.z)/length},right={x:front.z,z:-front.x};
-  return {origin,end,length,front,right,yaw:Math.atan2(front.x,front.z),colonnade:44,motto:121,
+  return {origin,end,length,front,right,yaw:Math.atan2(front.x,front.z),colonnade:58,motto:111,
     at(distance,lateral=0){return {x:origin.x+front.x*distance+right.x*lateral,z:origin.z+front.z*distance+right.z*lateral};},
     project(x,z){const dx=x-origin.x,dz=z-origin.z;return {distance:dx*front.x+dz*front.z,lateral:dx*right.x+dz*right.z};}
   };
@@ -24,7 +29,7 @@ export function inside(x,z) {
 // 南门临街侧增加与门前铺装一致的步行范围，其余边界沿用校园地图。
 export function walkable(x,z) {
   const gate=world(841,1510);
-  return inside(x,z)||(Math.abs(x-gate.x)<16 && z>gate.z-13 && z<gate.z+29.5);
+  return inside(x,z)||(Math.abs(x-gate.x)<16*gateScale && z>gate.z-13*gateScale && z<gate.z+29.5*gateScale);
 }
 export function height(x,z) {
   const p=world(828,306);
@@ -47,11 +52,11 @@ export const roadLines = [
   {name:'体育场西路',width:4.5,points:[[446,1166],[439,1255],[432,1355]]},
   {name:'体育场东路',width:5,points:[[776,1197],[752,1292],[738,1403],[730,1483]]},
   {name:'体育场南路',width:5.3,points:[[339,1359],[445,1368],[563,1380],[680,1388],[738,1403],[800,1430],[876,1430],[971,1448],[1115,1471]]},
-  {name:'南门道路',width:5.8,points:[[475,1457],[591,1468],[730,1483],[827,1494],[842,1509],[832,1585]]},
+  {name:'南门道路',width:5.8,points:[[475,1457],[591,1468],[730,1483],[827,1494],[841,1494]]},
   {name:'西门道路',width:4.8,points:[[292,1235],[341,1276],[438,1255]]},
   {name:'主楼前路',width:3.5,points:[[776,1197],[791,1132],[803,1086],[877,1090],[997,1117]]}
 ];
-roadLines.push({name:'南门中轴路',width:8,points:[56,98,132,campusAxis.length].map(s=>{const p=campusAxis.at(s);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})});
+roadLines.push({name:'南门中轴路',width:8,points:[111,132,campusAxis.length].map(s=>{const p=campusAxis.at(s);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})});
 export const paths = [
  [[642,331],[732,336],[797,321],[856,336],[921,382],[985,443],[1012,489]],
  [[646,345],[707,358],[755,351],[807,369],[819,414],[800,465],[820,524]],
@@ -120,7 +125,7 @@ export const buildings = [
  ['water','综合拖曳水池','study',1029,1370,78,32,2],
  ['printing','打印厂','life',1076,1165,38,54,2],
  ['incubator','创新创业园','study',334,779,74,71,3,'courtyard'],
- ['doorSouth','南门','gate',841,1510,96,15,1,'gate'],
+ ['doorSouth','南门','gate',841,1510,96*gateScale,15*gateScale,1,'gate'],
  ['doorEast','东门','gate',1132,1226,10,30,1,'gate'],
  ['doorWest','西门','gate',292,1234,28,8,1,'gate'],
  ['doorNorth','西北侧门','gate',435,1091,26,8,1,'gate']
@@ -129,5 +134,8 @@ for(const [i,x,y] of [[18,364,1383],[16,418,1389],[17,483,1395],[14,552,1402],[2
   buildings.push({id:'family'+i,name:'林苑家属区 '+i+'号楼',kind:'life',px:x,py:y,...world(x,y),w:47*.45,d:15*.45,floors:4,shape:'block',minor:true});
 }
 export const categoryNames={study:'教学科研',life:'生活服务',sport:'运动场地',gate:'校园出入口'};
-export const lakes=[{name:'天鹅湖',points:[[517,642],[532,651],[527,671],[541,695],[529,715],[504,714],[497,696],[499,669]]},{name:'日湖',points:[[913,1264],[946,1266],[954,1285],[943,1314],[921,1315],[917,1296],[895,1288]]},{name:'月湖',points:[[828,1251],[846,1253],[838,1270],[817,1288],[821,1313],[806,1307],[795,1280],[806,1260]]}];
+function axisLake(name,points) {return {name,smooth:true,points:points.map(([lateral,distance])=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})};}
+export const lakes=[{name:'天鹅湖',points:[[517,642],[532,651],[527,671],[541,695],[529,715],[504,714],[497,696],[499,669]]},
+  axisLake('日湖',[[6,62],[17,60],[28,67],[31,80],[26,91],[17,95],[10,89],[11,78],[6,71]]),
+  axisLake('月湖',[[-6,62],[-15,61],[-26,68],[-30,78],[-26,91],[-17,94],[-10,88],[-12,78],[-6,71]])];
 export const tourIds=['doorSouth','main','stadium','xuezi','library','ning'];

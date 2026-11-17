@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis } from '../src/campus-data.js';
+import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis,gateScale,colonnadeLayout,colonnadePoint } from '../src/campus-data.js';
 import { southGateSolids } from '../src/south-gate.js';
 import { mainBuildingSolids } from '../src/main-axis.js';
 import { normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from '../src/weather-state.js';
@@ -21,8 +21,18 @@ for(const distance of [campusAxis.colonnade,campusAxis.motto,campusAxis.length])
   assert(walkable(p.x,p.z),'Axis outside campus');
 }
 assert(mainBuildingSolids.filter(s=>Math.abs(s.x)>20).every(s=>s.z>0),'Main side wings must face south gate');
+const mainWidth=Math.max(...mainBuildingSolids.map(s=>s.x+s.w/2))-Math.min(...mainBuildingSolids.map(s=>s.x-s.w/2));
+const columnWidth=2*colonnadeLayout.radius*Math.sin(colonnadeLayout.halfAngle);
+assert(columnWidth/mainWidth>.4&&columnWidth/mainWidth<.6,'Colonnade should be narrower than main forecourt');
+assert(43.2*gateScale/mainWidth<.35,'South gate is oversized relative to main building');
+assert(colonnadeLayout.pairs%2===0,'Central colonnade opening must fall between paired columns');
+for(let i=0;i<colonnadeLayout.pairs;i++)for(const row of [-1,1]) {
+  const angle=-colonnadeLayout.halfAngle+2*colonnadeLayout.halfAngle*i/(colonnadeLayout.pairs-1),p=colonnadePoint(angle,row*colonnadeLayout.rowOffset);
+  assert(Math.abs(p.x)>.515+.35,'Paired column blocks central pedestrian passage');
+}
 for(let distance=23;distance<=50;distance++)assert(!mainBuildingSolids.some(s=>Math.abs(s.x)<s.w/2+.35&&Math.abs(distance-s.z)<s.d/2+.35),'Main forecourt blocks axial approach');
-for(let z=-11;z<=28;z++) {
+for(let t=-11;t<=28;t++) {
+  const z=t*gateScale;
   assert(walkable(gate.x,gate.z+z),'South gate approach is not walkable');
   assert(!southGateSolids.some(s=>Math.abs(s.x)<s.w/2+.35&&Math.abs(z-s.z)<s.d/2+.35&&s.y<1.7&&s.y+s.h>.08),'South gate arch blocks central passage');
 }

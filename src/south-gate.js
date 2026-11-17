@@ -1,6 +1,7 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { surfaceMaterial } from './realism.js';
+import { gateScale } from './campus-data.js';
 
 // 尺寸为依据三张照片估计的场景比例，不作为实测尺寸。
 // 将通道与实心部分分开登记，拱顶的拾取包围盒不会堵住地面通行。
@@ -9,7 +10,7 @@ export const southGateSolids = [
   ...[-17.8,17.8].map(x=>({x,y:0,z:-.3,w:7.6,h:6.2,d:6.4})),
   {x:0,y:7.05,z:0,w:12.4,h:5.9,d:5.1},
   ...[-9.8,9.8].map(x=>({x,y:5.95,z:0,w:6.8,h:6.7,d:5.1}))
-];
+].map(s=>Object.fromEntries(Object.entries(s).map(([key,value])=>[key,value*gateScale])));
 
 export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
   const materials={
@@ -149,7 +150,7 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     }
   }
   // 南门前的车行铺装、双黄线、斜纹分流区及人行道。
-  block(0,-5.4,7,33,5.55,46,materials.shade,false);
+  block(0,-5.5/gateScale,7,33,5.5/gateScale+.15,46,materials.shade,false);
   block(0,.15,7,24,.12,46,materials.road,false);
   for(const side of [-1,1]) {
     block(side*14,.15,7,4,.15,46,materials.paving,false);
@@ -180,16 +181,17 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     const p=geo.attributes.position;
     for(let i=0;i<p.count;i++) {
       const z=p.getZ(i)+57.5,t=(z-30)/55,s=t*t*(3-2*t);
-      p.setXYZ(i,p.getX(i)+(left+right)/2,.27-5.75*s+lift,z);
+      p.setXYZ(i,p.getX(i)+(left+right)/2,.27-(.27+5.5/gateScale)*s+lift,z);
     }
     geo.computeVertexNormals();emit(geo,material,null,false);
   }
   apronRamp(-16.5,16.5,materials.paving,0);
   apronRamp(-12,12,materials.road,.015);
   for(const solid of southGateSolids)addCollider(entry.x+solid.x,solid.y,entry.z+solid.z,solid.w,solid.h,solid.d);
-  entry.faces.push({x:entry.x,z:entry.z,w:43.2,d:6.4});entry.top=14.37;
+  entry.faces.push({x:entry.x,z:entry.z,w:43.2*gateScale,d:6.4*gateScale});entry.top=14.37*gateScale;
   for(const {material,cast,parts} of buckets.values()) {
     const merged=mergeGeometries(parts,false);
+    merged.scale(gateScale,gateScale,gateScale);
     registerMesh(mesh(merged,material,entry.x,0,entry.z,cast),entry);
     parts.forEach(p=>p.dispose());
   }
