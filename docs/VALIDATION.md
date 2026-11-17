@@ -2,6 +2,8 @@
 
 日期：2026-11-17。提交前使用本机 Chrome（agent-browser）检查。
 
+南门照片细化的后续验证单独记录在 [SOUTH-GATE.md](SOUTH-GATE.md)。
+
 ## 已验证
 
 - `npm run build`：生成约 2.68 MB 的单文件 `index.html`。

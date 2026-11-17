@@ -16,4 +16,6 @@ FINISH：unreviewed and undocumented is unfinished; this build ends with the fin
 
 ## 完成证据
 
-独立复核 disposition：ship。桌面与手机俯瞰截图、源码已复核；浏览器交互、离线文件与第一人称移动另见 VALIDATION.md。原图有来源元数据；没有生成式图片素材。
+初版独立复核 disposition：ship。桌面与手机俯瞰截图、源码已复核；浏览器交互、离线文件与第一人称移动另见 VALIDATION.md。原图有来源元数据；没有生成式图片素材。
+
+南门照片细化保留上述界面规则，增加局部建筑材质与正面近景。已检查稳定镜头的桌面、手机截图，并实际由临街侧穿过中央拱门；本次检查范围见 SOUTH-GATE.md。

@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, inside, height, world, buildings, categoryNames, tourIds, roadLines, lakes } from './campus-data.js';
+import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
@@ -13,7 +13,7 @@ try { init(THREE,PointerLockControls); } catch(error) {
 
 function init(T, PointerLockControls) {
   // 图面坐标转为场景坐标；单位不是测绘米数，图面上方不等于正北。
-  const bounds = { minX:-246, maxX:215, minZ:-323, maxZ:320 };
+  const bounds = { minX:-246, maxX:215, minZ:-323, maxZ:340 };
   const scene = new T.Scene();
   scene.background = new T.Color(0xc8dfe4);
   scene.fog = new T.Fog(0xc8dfe4, 285, 1100);
@@ -227,7 +227,7 @@ function init(T, PointerLockControls) {
   const landing=world(841,1484);
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const pointerAvailable=typeof canvas.requestPointerLock==='function' && matchMedia('(any-pointer: fine)').matches;
-  function fitDistance() { return Math.max(1,.78/orbitCam.aspect); }
+  function fitDistance() { return Math.max(1,(selected?.id==='doorSouth'?.98:.78)/orbitCam.aspect); }
   function locked() { return mode==='walk' && document.pointerLockElement===canvas; }
   function stopMoving() { held.clear(); velocity.set(0,0,0); accumulator=0; }
   function cancelDrag() {
@@ -327,14 +327,14 @@ function init(T, PointerLockControls) {
   canvas.addEventListener('pointermove',event=>{
     if(event.pointerId!==dragId) return;
     azimuth-=(event.clientX-dragX)*.006;
-    elevation=clamp(elevation+(event.clientY-dragY)*.006,.24,1.39);
+    elevation=clamp(elevation+(event.clientY-dragY)*.006,.04,1.39);
     dragX=event.clientX;
     dragY=event.clientY;
   });
   for(const type of ['pointerup','pointercancel','lostpointercapture']) canvas.addEventListener(type,event=>{
     if(event.pointerId===dragId) cancelDrag();
   });
-  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,95,1200); }
+  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,selected?.id==='doorSouth'?28:95,1200); }
   canvas.addEventListener('wheel',event=>{
     if(mode!=='orbit' || !started) return;
     event.preventDefault();
@@ -346,7 +346,7 @@ function init(T, PointerLockControls) {
 
   function occupied(x,z) {
     if(x-bodyRadius<bounds.minX || x+bodyRadius>bounds.maxX ||
-       z-bodyRadius<bounds.minZ || z+bodyRadius>bounds.maxZ || !inside(x,z)) return true;
+       z-bodyRadius<bounds.minZ || z+bodyRadius>bounds.maxZ || !walkable(x,z)) return true;
     const floor=height(x,z);
     return colliders.some(b=>
       x+bodyRadius>b.minX && x-bodyRadius<b.maxX &&
@@ -462,7 +462,7 @@ function init(T, PointerLockControls) {
       const x=(projected.x+1)*width*.5;
       const y=(1-projected.y)*screenHeight*.5;
       const w=(compact?9:11)*entry.name.length+(compact?19:27);
-      const canShow=(!compact || entry.priority<=1) && projected.z>-1 && projected.z<1 &&
+      const canShow=(!(selected?.id==='doorSouth' && radius<150) || entry===selected) && (!compact || entry.priority<=1) && projected.z>-1 && projected.z<1 &&
         x-w/2>5 && x+w/2<width-5 && y>16 && y<screenHeight-12;
       const rect=[x-w/2-4,y-23,x+w/2+4,y+3];
       const show=canShow && !reserved.some(([l,t,r,b])=>rect[0]<r && rect[2]>l && rect[1]<b && rect[3]>t);
@@ -547,10 +547,11 @@ function init(T, PointerLockControls) {
     selectOrbit();selected=entry;
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
     targetRadius=Math.max(160,Math.max(entry.spec.w,entry.spec.d)*3.6);
+    if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5,entry.z);targetRadius=63;azimuth=0;elevation=.055; }
     el('detailTitle').textContent=entry.name;el('detailKind').textContent=categoryNames[entry.kind];el('detailDescription').textContent=entry.description;
     el('detail').hidden=false;el('card').hidden=true;
     selection.position.set(entry.x,height(entry.x,entry.z)+.6,entry.z);
-    const size=Math.max(entry.spec.w,entry.spec.d)*.65;selection.scale.set(size,size,1);selection.visible=true;
+    const size=Math.max(entry.spec.w,entry.spec.d)*.65;selection.scale.set(size,size,1);selection.visible=entry.id!=='doorSouth';
     for(const button of el('buildingList').children)button.setAttribute('aria-pressed',String(button.dataset.id===entry.id));
   }
   function resetView() {
@@ -609,12 +610,14 @@ function init(T, PointerLockControls) {
     if(mode!=='orbit')return;
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','+','-','='].includes(event.key))event.preventDefault();
     if(event.key==='ArrowLeft')azimuth-=.1;if(event.key==='ArrowRight')azimuth+=.1;
-    if(event.key==='ArrowUp')elevation=clamp(elevation+.08,.24,1.39);if(event.key==='ArrowDown')elevation=clamp(elevation-.08,.24,1.39);
+    if(event.key==='ArrowUp')elevation=clamp(elevation+.08,.04,1.39);if(event.key==='ArrowDown')elevation=clamp(elevation-.08,.04,1.39);
     if(event.key==='Home')resetView();if(event.key==='+'||event.key==='=')zoomBy(.82);if(event.key==='-')zoomBy(1/.82);
   });
   // 自动巡览不能与手动漫游争用相机。
   el('walk').addEventListener('click',stopTour);el('orbit').addEventListener('click',stopTour);
   renderList();
+  el('startSouthGate').addEventListener('click',()=>focusEntry(landmarks.find(e=>e.id==='doorSouth')));
+  if(location.hash==='#south-gate')focusEntry(landmarks.find(e=>e.id==='doorSouth'));
   window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
 
   // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
@@ -631,6 +634,7 @@ function init(T, PointerLockControls) {
   resize();
   refreshMode();
   el('startOrbit').disabled=false;
+  el('startSouthGate').disabled=false;
   el('startWalk').disabled=el('walk').disabled=!pointerAvailable;
   el('boot').hidden=pointerAvailable;
   if(!pointerAvailable) el('boot').textContent='当前设备可使用触摸俯瞰。第一人称需要支持鼠标锁定的桌面浏览器。';

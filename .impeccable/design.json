@@ -3,6 +3,20 @@
   "generatedAt": "2026-11-17T04:33:56.758Z",
   "title": "Design System: 哈工威·云上校园",
   "extensions": {
+    "sceneMaterials": {
+      "southGate": {
+        "source": "src/south-gate.js",
+        "scope": "Photo-referenced local model materials; UI tokens remain unchanged",
+        "wall": "#d1b786",
+        "trim": "#e5dfca",
+        "shade": "#b49b74",
+        "column": "#c9b58d",
+        "iron": "#263331",
+        "glass": "#587781",
+        "road": "#535958",
+        "steel": "#c6cecc"
+      }
+    },
     "colorMeta": {
       "ink": {
         "role": "neutral",

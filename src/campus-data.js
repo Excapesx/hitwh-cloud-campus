@@ -12,6 +12,11 @@ export function inside(x,z) {
   }
   return hit;
 }
+// 南门临街侧增加与门前铺装一致的步行范围，其余边界沿用校园地图。
+export function walkable(x,z) {
+  const gate=world(841,1510);
+  return inside(x,z)||(Math.abs(x-gate.x)<16 && z>gate.z-13 && z<gate.z+29.5);
+}
 export function height(x,z) {
   const p=world(828,306);
   const hill=58*Math.exp(-(((x-p.x)/81)**2+((z-p.z)/62)**2));
@@ -105,7 +110,7 @@ export const buildings = [
  ['water','综合拖曳水池','study',1029,1370,78,32,2],
  ['printing','打印厂','life',1076,1165,38,54,2],
  ['incubator','创新创业园','study',334,779,74,71,3,'courtyard'],
- ['doorSouth','南门','gate',841,1510,36,8,1,'gate'],
+ ['doorSouth','南门','gate',841,1510,96,15,1,'gate'],
  ['doorEast','东门','gate',1132,1226,10,30,1,'gate'],
  ['doorWest','西门','gate',292,1234,28,8,1,'gate'],
  ['doorNorth','西北侧门','gate',435,1091,26,8,1,'gate']
