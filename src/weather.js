@@ -1,17 +1,19 @@
 import { defaultWeather, normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from './weather-state.js';
-import { height, world } from './campus-data.js';
+import { height, world, campusAxis } from './campus-data.js';
 
 const storageKey='hitwh-weather-v1';
 export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen}) {
   const el=id=>document.getElementById(id),motion=matchMedia('(prefers-reduced-motion: reduce)');
   let state={...defaultWeather},lastSave=0,lastUI='',lastLit=-1,particleMode='',anchor=null,resetAnchor=null;
   try {state=normalizeWeather(JSON.parse(localStorage.getItem(storageKey))||{});state.playing=false;}catch{}
-  const wet={value:0},snow={value:0},materials=new Set(),windows=[],lamps=[];
+  const wet={value:0},snow={value:0},materials=new Set(),windows=[],lamps=[],outlines=[],facades=[];
   scene.traverse(object=>{for(const material of (Array.isArray(object.material)?object.material:[object.material])) {
     if(!material?.isMeshStandardMaterial||materials.has(material))continue;
     materials.add(material);
     if(material.userData.nightWindow)windows.push(material);
     if(material.userData.nightLamp)lamps.push(material);
+    if(material.userData.nightOutline)outlines.push(material);
+    if(material.userData.nightFacade)facades.push(material);
     const compile=material.onBeforeCompile.bind(material),cacheKey=material.customProgramCacheKey();
     material.onBeforeCompile=shader=>{
       compile(shader);shader.uniforms.uWeatherWet=wet;shader.uniforms.uWeatherSnow=snow;
@@ -105,12 +107,15 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
         lastLit=a.night;
         for(const material of windows){material.emissive.setHex(0xffcd85);material.emissiveIntensity=a.night*.55;}
         for(const material of lamps){material.emissive.setHex(0xffe6b5);material.emissiveIntensity=a.night*2.5;}
+        for(const material of outlines){material.emissive.setHex(0xffc469);material.emissiveIntensity=a.night*2.1;}
+        for(const material of facades){material.emissive.setHex(0xffc77d);material.emissiveIntensity=a.night*.075;}
         for(const {light,power} of nightLights)light.intensity=power*a.night;
       }
       const falling=['rain','snow'].includes(state.type)&&state.particles&&state.intensity>0;
       particles.visible=falling;
       if(!falling){particleMode='';return;}
-      const nextAnchor=mode==='walk'?{x:camera.position.x,z:camera.position.z,w:80,d:80,close:true}:close?{x:gate.x,z:gate.z+20,w:135,d:130,close:true}:{x:0,z:0,w:580,d:780,close:false};
+      const center=close==='main'?campusAxis.at(20):{x:gate.x,z:gate.z+20};
+      const nextAnchor=mode==='walk'?{x:camera.position.x,z:camera.position.z,w:80,d:80,close:true}:close?{x:center.x,z:center.z,w:135,d:130,close:true}:{x:0,z:0,w:580,d:780,close:false};
       const changed=particleMode!==state.type||!resetAnchor||resetAnchor.close!==nextAnchor.close||Math.hypot(resetAnchor.x-nextAnchor.x,resetAnchor.z-nextAnchor.z)>20;
       anchor=nextAnchor;
       if(changed)resetAnchor={...anchor};

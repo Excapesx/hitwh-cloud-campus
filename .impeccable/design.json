@@ -4,6 +4,15 @@
   "title": "Design System: 哈工威·云上校园",
   "extensions": {
     "sceneMaterials": {
+      "mainBuilding": {
+        "source": "src/main-axis.js",
+        "scope": "Five user-supplied main-building photos; facade faces south gate along the shared campus axis",
+        "stone": "#e1e5dc",
+        "trim": "#f0eee0",
+        "recess": "#b8c4bd",
+        "glass": "#365b50",
+        "mottoRock": "#c4ad7e"
+      },
       "southGate": {
         "source": "src/south-gate.js",
         "scope": "Photo-referenced local model materials; UI tokens remain unchanged",

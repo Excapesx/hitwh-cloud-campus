@@ -49,6 +49,7 @@
   <aside id="detail" class="detail" hidden aria-labelledby="detailTitle">
     <div class="panel-heading"><span id="detailKind"></span><button id="detailClose" type="button" aria-label="关闭建筑详情">关闭</button></div>
     <h2 id="detailTitle"></h2><p id="detailDescription"></p>
+    <button id="axisView" type="button" hidden>查看完整中轴线</button>
     <button id="walkHere" type="button">到附近漫游</button>
   </aside>
   <p id="tourStatus" class="tour-status" hidden role="status"></p>
@@ -64,7 +65,7 @@
       <h1 id="title">哈工威·云上校园</h1>
       <p>依照校园地图，走进主楼、图书馆与体育场之间。选择俯瞰探索全校，或从南门开始第一人称漫游。</p>
       <dl><dt>第一人称</dt><dd>WASD 移动 · 鼠标环顾 · E 查看建筑 · Esc 释放鼠标</dd><dt>俯瞰全校</dt><dd>拖拽旋转 · 滚轮或按钮缩放 · 双指缩放 · 点击建筑查看</dd></dl>
-      <div class="start-actions"><button id="startWalk" type="button" disabled>进入第一人称漫游</button><button id="startOrbit" type="button" disabled>俯瞰全校</button><button id="startSouthGate" type="button" disabled>查看南门细节</button></div>
+      <div class="start-actions"><button id="startWalk" type="button" disabled>进入第一人称漫游</button><button id="startOrbit" type="button" disabled>俯瞰全校</button><button id="startSouthGate" type="button" disabled>查看南门细节</button><button id="startMainAxis" type="button" disabled>查看主楼与中轴线</button></div>
       <p class="model-note">地图描绘 · 程序化三维示意，非实景扫描</p><button id="fallbackMap" type="button" hidden>查看校园原图</button><p id="boot" role="status">正在加载三维校园…</p>
     </main>
   </div>

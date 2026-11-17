@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildings,inside,walkable,world,roadLines,tourIds } from '../src/campus-data.js';
+import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis } from '../src/campus-data.js';
 import { southGateSolids } from '../src/south-gate.js';
+import { mainBuildingSolids } from '../src/main-axis.js';
 import { normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from '../src/weather-state.js';
 const ids=new Set();
 for(const b of buildings){assert(!ids.has(b.id),'Duplicate building '+b.id);ids.add(b.id);if(b.kind!=='gate')assert(inside(b.x,b.z),'Building outside campus: '+b.id);assert(b.w>0&&b.d>0,'Invalid footprint '+b.id);}
@@ -11,6 +12,16 @@ const main=buildings.find(b=>b.id==='main'),library=buildings.find(b=>b.id==='li
 assert(library.z<main.z&&stadium.x<main.x&&stadium.z>main.z,'Reference-map spatial relationships changed');
 assert(inside(world(841,1484).x,world(841,1484).z),'Walk spawn outside campus');
 const gate=buildings.find(b=>b.id==='doorSouth');
+const end=campusAxis.at(campusAxis.length);
+assert(Math.hypot(end.x-gate.x,end.z-gate.z)<1e-8,'Main axis must terminate at south gate');
+assert(Math.abs(campusAxis.project(main.x,main.z).lateral)<1e-8,'Main building off axis');
+assert(campusAxis.colonnade>22&&campusAxis.motto>campusAxis.colonnade&&campusAxis.motto<campusAxis.length,'Axis landmark order');
+for(const distance of [campusAxis.colonnade,campusAxis.motto,campusAxis.length]) {
+  const p=campusAxis.at(distance);assert(Math.abs(campusAxis.project(p.x,p.z).lateral)<1e-8,'Axis alignment');
+  assert(walkable(p.x,p.z),'Axis outside campus');
+}
+assert(mainBuildingSolids.filter(s=>Math.abs(s.x)>20).every(s=>s.z>0),'Main side wings must face south gate');
+for(let distance=23;distance<=50;distance++)assert(!mainBuildingSolids.some(s=>Math.abs(s.x)<s.w/2+.35&&Math.abs(distance-s.z)<s.d/2+.35),'Main forecourt blocks axial approach');
 for(let z=-11;z<=28;z++) {
   assert(walkable(gate.x,gate.z+z),'South gate approach is not walkable');
   assert(!southGateSolids.some(s=>Math.abs(s.x)<s.w/2+.35&&Math.abs(z-s.z)<s.d/2+.35&&s.y<1.7&&s.y+s.h>.08),'South gate arch blocks central passage');

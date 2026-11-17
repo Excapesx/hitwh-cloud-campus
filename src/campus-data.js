@@ -2,6 +2,15 @@
 // 场景单位仅用于展示，不代表实际米数；楼高、立面均为示意。
 export const MAP = { width:1334, height:1888, scale:.45, originX:720, originY:850 };
 export const world = (x,y) => ({x:(x-MAP.originX)*MAP.scale,z:(y-MAP.originY)*MAP.scale});
+// 照片与用户纠正：主楼正面朝向南门。沿两者连线组织前庭、柱廊和校训石。
+export const campusAxis=(()=>{
+  const origin=world(879,1141),end=world(841,1510),length=Math.hypot(end.x-origin.x,end.z-origin.z);
+  const front={x:(end.x-origin.x)/length,z:(end.z-origin.z)/length},right={x:front.z,z:-front.x};
+  return {origin,end,length,front,right,yaw:Math.atan2(front.x,front.z),colonnade:44,motto:121,
+    at(distance,lateral=0){return {x:origin.x+front.x*distance+right.x*lateral,z:origin.z+front.z*distance+right.z*lateral};},
+    project(x,z){const dx=x-origin.x,dz=z-origin.z;return {distance:dx*front.x+dz*front.z,lateral:dx*right.x+dz*right.z};}
+  };
+})();
 export const outlinePixels = [[185,740],[224,685],[333,613],[436,590],[490,500],[515,352],[517,235],[535,187],[606,146],[662,147],[711,183],[760,207],[846,196],[904,228],[972,274],[1009,325],[1031,410],[1081,493],[1128,568],[1157,652],[1160,726],[1132,799],[1099,866],[1087,962],[1103,1090],[1135,1230],[1153,1394],[1187,1558],[1094,1558],[997,1540],[892,1524],[858,1507],[825,1507],[786,1533],[672,1525],[572,1516],[478,1508],[478,1467],[407,1459],[319,1469],[332,1331],[286,1261],[312,1210],[383,1149],[441,1092],[475,1005],[466,929],[448,894],[405,889],[363,925],[331,920],[280,884],[270,834],[277,783]];
 export const outline = outlinePixels.map(([x,y])=>world(x,y));
 export function inside(x,z) {
@@ -42,6 +51,7 @@ export const roadLines = [
   {name:'西门道路',width:4.8,points:[[292,1235],[341,1276],[438,1255]]},
   {name:'主楼前路',width:3.5,points:[[776,1197],[791,1132],[803,1086],[877,1090],[997,1117]]}
 ];
+roadLines.push({name:'南门中轴路',width:8,points:[56,98,132,campusAxis.length].map(s=>{const p=campusAxis.at(s);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})});
 export const paths = [
  [[642,331],[732,336],[797,321],[856,336],[921,382],[985,443],[1012,489]],
  [[646,345],[707,358],[755,351],[807,369],[819,414],[800,465],[820,524]],

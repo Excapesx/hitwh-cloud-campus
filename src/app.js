@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes } from './campus-data.js';
+import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
 import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
 import { createWeatherSystem } from './weather.js';
@@ -159,6 +159,9 @@ function init(T, PointerLockControls) {
   const treeCount=420;
   function treeAllowed(x,z) {
     if(!inside(x,z))return false;
+    const axis=campusAxis.project(x,z);
+    if(axis.distance>-10&&axis.distance<58&&Math.abs(axis.lateral)<34)return false;
+    if(axis.distance>=58&&axis.distance<campusAxis.length&&Math.abs(axis.lateral)<11)return false;
     if(roads.some(r=>distanceToRoad(x,z,r)<r.width/2+2))return false;
     if(buildings.some(b=>Math.abs(x-b.x)<b.w/2+3 && Math.abs(z-b.z)<b.d/2+3))return false;
     if(lakes.some(l=>{const a=world(...l.points[0]);return Math.hypot(x-a.x,z-a.z)<13;}))return false;
@@ -220,7 +223,7 @@ function init(T, PointerLockControls) {
   let dragX=0, dragY=0, azimuth=.14, elevation=.98, radius=950, targetRadius=950, dragEndedAt=-Infinity;
   const orbitTarget=new T.Vector3(-12,7,0);
   const targetGoal=orbitTarget.clone();
-  let autoRotate=false,labelsVisible=true,selected=null,tourIndex=-1,tourAt=0;
+  let autoRotate=false,labelsVisible=true,selected=null,tourIndex=-1,tourAt=0,viewingAxis=false;
   const landing=world(841,1484);
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const pointerAvailable=typeof canvas.requestPointerLock==='function' && matchMedia('(any-pointer: fine)').matches;
@@ -228,7 +231,7 @@ function init(T, PointerLockControls) {
     unlock(){if(document.pointerLockElement===canvas)controls.unlock();stopMoving();},
     onOpen(){el('directory').hidden=true;el('directoryToggle').setAttribute('aria-expanded','false');if(innerWidth<700)el('detail').hidden=true;}
   });
-  function fitDistance() { return Math.max(1,(selected?.id==='doorSouth'?.98:.78)/orbitCam.aspect); }
+  function fitDistance() { return Math.max(1,(['doorSouth','main'].includes(selected?.id)?.98:.78)/orbitCam.aspect); }
   function locked() { return mode==='walk' && document.pointerLockElement===canvas; }
   function stopMoving() { held.clear(); velocity.set(0,0,0); accumulator=0; }
   function cancelDrag() {
@@ -460,7 +463,8 @@ function init(T, PointerLockControls) {
       const x=(projected.x+1)*width*.5;
       const y=(1-projected.y)*screenHeight*.5;
       const w=(compact?9:11)*entry.name.length+(compact?19:27);
-      const canShow=(!(selected?.id==='doorSouth' && radius<150) || entry===selected) && (!compact || entry.priority<=1) && projected.z>-1 && projected.z<1 &&
+      const inDetail=(selected?.id==='doorSouth'&&radius<150)||(selected?.id==='main'&&!viewingAxis&&radius<160);
+      const canShow=(!inDetail || entry===selected) && (!compact || entry.priority<=1) && projected.z>-1 && projected.z<1 &&
         x-w/2>5 && x+w/2<width-5 && y>16 && y<screenHeight-12;
       const rect=[x-w/2-4,y-23,x+w/2+4,y+3];
       const show=canShow && !reserved.some(([l,t,r,b])=>rect[0]<r && rect[2]>l && rect[1]<b && rect[3]>t);
@@ -489,6 +493,9 @@ function init(T, PointerLockControls) {
   for(const r of roadLines){base.lineWidth=r.width*mapScale;base.beginPath();r.points.forEach(([x,y],i)=>{const p=world(x,y);i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z));});base.stroke();}
   const mapColors={study:'#46786c',life:'#b17c59',sport:'#528497',gate:'#897646'};
   for(const entry of landmarks){base.fillStyle=mapColors[entry.kind];for(const f of entry.faces)mapRect(base,f.x,f.z,f.w,f.d);}
+  base.strokeStyle='#d0bc85';base.lineWidth=2;base.beginPath();
+  for(let i=0;i<=24;i++){const a=-1.18+2.36*i/24,p=campusAxis.at(campusAxis.colonnade+23*(Math.cos(a)-1),Math.sin(a)*23);i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z));}base.stroke();
+  const stonePoint=campusAxis.at(campusAxis.motto);base.fillStyle='#b28552';base.beginPath();base.arc(mx(stonePoint.x),mz(stonePoint.z),2.4,0,Math.PI*2);base.fill();
   base.strokeStyle='#a65d49';base.lineWidth=4;base.beginPath();base.ellipse(mx(field.x),mz(field.z),field.spec.w/2*mapScale,field.spec.d/2*mapScale,0,0,Math.PI*2);base.stroke();
 
   function updateMap() {
@@ -548,10 +555,12 @@ function init(T, PointerLockControls) {
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
     targetRadius=Math.max(160,Math.max(entry.spec.w,entry.spec.d)*3.6);
     if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5,entry.z);targetRadius=63;azimuth=0;elevation=.055; }
+    if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,13,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
+    viewingAxis=false;el('axisView').hidden=entry.id!=='main';el('axisView').textContent='查看完整中轴线';
     el('detailTitle').textContent=entry.name;el('detailKind').textContent=categoryNames[entry.kind];el('detailDescription').textContent=entry.description;
     el('detail').hidden=false;el('card').hidden=true;
     selection.position.set(entry.x,height(entry.x,entry.z)+.6,entry.z);
-    const size=Math.max(entry.spec.w,entry.spec.d)*.65;selection.scale.set(size,size,1);selection.visible=entry.id!=='doorSouth';
+    const size=Math.max(entry.spec.w,entry.spec.d)*.65;selection.scale.set(size,size,1);selection.visible=!['doorSouth','main'].includes(entry.id);
     for(const button of el('buildingList').children)button.setAttribute('aria-pressed',String(button.dataset.id===entry.id));
   }
   function resetView() {
@@ -577,6 +586,13 @@ function init(T, PointerLockControls) {
   el('rotateToggle').addEventListener('click',()=>{autoRotate=!autoRotate;el('rotateToggle').setAttribute('aria-pressed',String(autoRotate));if(autoRotate&&reduceMotion.matches)notify('系统已开启减少动态效果，自转保持暂停。');});
   el('tour').addEventListener('click',()=>{if(tourIndex>=0){stopTour();return;}tourIndex=0;el('tour').setAttribute('aria-pressed','true');el('tour').textContent='停止巡览';el('tourStatus').hidden=false;nextStop(performance.now());});
   el('detailClose').addEventListener('click',()=>{el('detail').hidden=true;selection.visible=false;});
+  function showAxis() {
+    const entry=landmarks.find(e=>e.id==='main');if(selected!==entry)focusEntry(entry);
+    selectOrbit();stopTour();viewingAxis=true;
+    const p=campusAxis.at(92);targetGoal.set(p.x,3,p.z);targetRadius=270;azimuth=campusAxis.yaw+.12;elevation=.72;
+    el('axisView').textContent='查看主楼正面';
+  }
+  el('axisView').addEventListener('click',()=>viewingAxis?focusEntry(landmarks.find(e=>e.id==='main')):showAxis());
   el('walkHere').disabled=!pointerAvailable;
   el('walkHere').addEventListener('click',()=>{
     if(!selected)return;stopTour();const s=selected.spec;let safe=null;
@@ -617,7 +633,13 @@ function init(T, PointerLockControls) {
   el('walk').addEventListener('click',stopTour);el('orbit').addEventListener('click',stopTour);
   renderList();
   el('startSouthGate').addEventListener('click',()=>focusEntry(landmarks.find(e=>e.id==='doorSouth')));
-  if(location.hash==='#south-gate')focusEntry(landmarks.find(e=>e.id==='doorSouth'));
+  el('startMainAxis').addEventListener('click',showAxis);
+  function openHash() {
+    if(location.hash==='#south-gate')focusEntry(landmarks.find(e=>e.id==='doorSouth'));
+    if(location.hash==='#main')focusEntry(landmarks.find(e=>e.id==='main'));
+    if(location.hash==='#main-axis')showAxis();
+  }
+  window.addEventListener('hashchange',openHash);openHash();
   window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality,weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
 
   // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
@@ -637,6 +659,7 @@ function init(T, PointerLockControls) {
   refreshMode();
   el('startOrbit').disabled=false;
   el('startSouthGate').disabled=false;
+  el('startMainAxis').disabled=false;
   el('startWalk').disabled=el('walk').disabled=!pointerAvailable;
   el('boot').hidden=pointerAvailable;
   if(!pointerAvailable) el('boot').textContent='当前设备可使用触摸俯瞰。第一人称需要支持鼠标锁定的桌面浏览器。';
@@ -678,10 +701,12 @@ function init(T, PointerLockControls) {
       lastMap=now;
     }
     const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<180:Math.hypot(walkCam.position.x-54.45,walkCam.position.z-297)<85;
+    const nearMain=mode==='orbit'?selected?.id==='main'&&!viewingAxis&&radius<160:Math.hypot(walkCam.position.x-campusAxis.origin.x,walkCam.position.z-campusAxis.origin.z)<82;
+    const detailArea=nearGate?'gate':nearMain?'main':false;
     const activeCamera=mode==='orbit'?orbitCam:walkCam;
     const fit=mode==='orbit'?fitDistance():1;
-    weather.update(elapsed,activeCamera,nearGate,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});
-    rendering.render(activeCamera,nearGate);
+    weather.update(elapsed,activeCamera,detailArea,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});
+    rendering.render(activeCamera,detailArea);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

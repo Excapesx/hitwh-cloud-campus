@@ -1,5 +1,6 @@
 import { world, outline, inside, height, roadLines, paths, buildings, lakes } from './campus-data.js';
 import { buildSouthGate } from './south-gate.js';
+import { buildMainAxis } from './main-axis.js';
 
 export function buildTerrain({T,mesh,box,m}) {
   const shape=new T.Shape(outline.map(p=>new T.Vector2(p.x,-p.z)));
@@ -61,7 +62,7 @@ export function buildCampus(c) {
   const fieldEntries=[];
   for(const spec of buildings) {
     const {name,id,x,z,w,d,floors,kind,shape,minor}=spec;
-    const desc=id==='doorSouth'?'依据三张实景照片细化：中央大拱、两侧门廊、槽纹立柱、叠层檐口与校名牌匾。铁艺门保持敞开，可从门前走入校园；尺寸为照片估计。':kind==='gate'?'地图标注的校园出入口。门头体量为示意，请以现场开放情况为准。':
+    const desc=id==='main'?'依据五张实景照片修正：正面与两翼前庭朝向南门，中央为逐层收分的塔冠、巨柱与入口雨棚。主楼、前方弧形柱廊、校训石和南门共用一条中轴线；尺寸为照片比例估计。':id==='doorSouth'?'依据三张实景照片细化：中央大拱、两侧门廊、槽纹立柱、叠层檐口与校名牌匾。铁艺门保持敞开，可从门前走入校园；尺寸为照片估计。':kind==='gate'?'地图标注的校园出入口。门头体量为示意，请以现场开放情况为准。':
       name+'的位置依据所提供的校园地图描绘，建筑层数、外立面与高度为程序化示意。';
     const entry=landmark(name,id,desc,x,z,kind,['main','library','stadium','doorSouth'].includes(id)?0:minor?3:1);
     Object.assign(entry,{id,spec});
@@ -70,12 +71,7 @@ export function buildCampus(c) {
     if(id==='doorSouth') {
       buildSouthGate(c,entry);
     } else if(shape==='main') {
-      block(entry,x,y,z+6,w,8,h,7,m.wall,1.4);
-      for(const offset of [-w*.39,0,w*.39]) block(entry,x+offset,y,z-5,10,d*.86,h,7,m.light,1.3);
-      piece(entry,x,y+h,z-5,10,12,9,m.wall);
-      piece(entry,x,y+h+12,z-5,11,.8,10,m.light,{solid:false});
-      hip(entry,x,y+h+12.8,z-5,10,9,4);
-      piece(entry,x,y+h+16.8,z-5,.28,3,.28,m.brass,{solid:false});
+      buildMainAxis(c,entry);
     } else if(shape==='library') {
       const geo=new T.CylinderGeometry(1,1,1,56),obj=registerMesh(mesh(geo,m.blue,x,y+h/2,z),entry);obj.scale.set(w/2,h,d/2);
       for(let floor=0;floor<=floors;floor++){const rim=registerMesh(mesh(geo,m.light,x,y+floor*h/floors+.1,z),entry);rim.scale.set(w/2+.5,.4,d/2+.5);}

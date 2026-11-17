@@ -151,6 +151,8 @@
   .detail h2 { font-size:20px; margin:15px 0 8px; }
   .detail p { font-size:12px; line-height:1.8; color:var(--muted); margin:0 0 15px; }
   #walkHere { width:100%; padding:10px; border:1px solid var(--deep); background:var(--deep); color:var(--paper); border-radius:5px; font-size:12px; }
+  #axisView { width:100%; min-height:38px; padding:9px; margin-bottom:8px; border:1px solid var(--deep); background:transparent; color:var(--ink); border-radius:5px; font-size:12px; }
+  #axisView:hover { background:#e1ede0; }
   .tour-status,.toast { position:absolute; z-index:4; top:93px; left:50%; transform:translateX(-50%); padding:10px 15px; border:1px solid var(--line); border-radius:6px; background:var(--paper); font-size:12px; max-width:70vw; text-align:center; }
   .toast { top:auto; bottom:110px; }
   #reference { padding:0; width:min(850px,calc(100vw - 24px)); height:min(92dvh,1100px); max-height:92dvh; border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink); overflow:hidden; }

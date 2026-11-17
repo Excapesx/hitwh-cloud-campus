@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { world, height } from './campus-data.js';
+import { world, height, campusAxis } from './campus-data.js';
 
 // 世界坐标材质：细部尺度不随几何的 UV 展开或合批而改变；没有外部贴图请求。
 const surfaceGLSL=`
@@ -136,9 +136,10 @@ export function setupRealisticRendering(T,renderer,scene) {
   const supportsAO=renderer.extensions.has('EXT_color_buffer_float');
   function setShadowArea(close) {
     if(detailed===close)return;detailed=close;
-    target.set(close?gate.x:-12,close?4:0,close?gate.z:0);
+    const main=campusAxis.at(16);
+    target.set(close==='main'?main.x:close?gate.x:-12,close==='main'?14:close?4:0,close==='main'?main.z:close?gate.z:0);
     moveSun();
-    const span=close?66:390;
+    const span=close==='main'?84:close?66:390;
     sun.shadow.camera.left=sun.shadow.camera.bottom=-span;sun.shadow.camera.right=sun.shadow.camera.top=span;
     sun.shadow.camera.updateProjectionMatrix();sun.target.updateMatrixWorld();sun.updateMatrixWorld();renderer.shadowMap.needsUpdate=true;
   }
@@ -165,7 +166,7 @@ export function setupRealisticRendering(T,renderer,scene) {
       if(close&&cssWidth>=700&&supportsAO){ensureComposer(camera);renderPass.camera=camera;ao.camera=camera;composer.render();}
       else renderer.render(scene,camera);
     },
-    get quality(){return {detailShadows:detailed,contactAO:Boolean(detailed&&cssWidth>=700&&supportsAO),shadowMap:sun.shadow.mapSize.x};}
+    get quality(){return {detailShadows:Boolean(detailed),detailArea:detailed||null,contactAO:Boolean(detailed&&cssWidth>=700&&supportsAO),shadowMap:sun.shadow.mapSize.x};}
   };
 }
 
