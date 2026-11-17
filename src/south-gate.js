@@ -1,7 +1,7 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { surfaceMaterial } from './realism.js';
-import { gateScale } from './campus-data.js';
+import { gateScale, campusAxis, gatePoint } from './campus-data.js';
 
 // 尺寸为依据三张照片估计的场景比例，不作为实测尺寸。
 // 将通道与实心部分分开登记，拱顶的拾取包围盒不会堵住地面通行。
@@ -187,11 +187,16 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
   }
   apronRamp(-16.5,16.5,materials.paving,0);
   apronRamp(-12,12,materials.road,.015);
-  for(const solid of southGateSolids)addCollider(entry.x+solid.x,solid.y,entry.z+solid.z,solid.w,solid.h,solid.d);
-  entry.faces.push({x:entry.x,z:entry.z,w:43.2*gateScale,d:6.4*gateScale});entry.top=14.37*gateScale;
+  const c=Math.cos(campusAxis.yaw),s=Math.abs(Math.sin(campusAxis.yaw));
+  for(const solid of southGateSolids) {
+    const p=gatePoint(solid.x,solid.z);
+    addCollider(p.x,solid.y,p.z,c*solid.w+s*solid.d,solid.h,c*solid.d+s*solid.w);
+  }
+  entry.faces.push({x:entry.x,z:entry.z,w:(c*43.2+s*6.4)*gateScale,d:(c*6.4+s*43.2)*gateScale});entry.top=14.37*gateScale;
   for(const {material,cast,parts} of buckets.values()) {
     const merged=mergeGeometries(parts,false);
     merged.scale(gateScale,gateScale,gateScale);
+    merged.rotateY(campusAxis.yaw);
     registerMesh(mesh(merged,material,entry.x,0,entry.z,cast),entry);
     parts.forEach(p=>p.dispose());
   }

@@ -61,7 +61,6 @@ export function buildCampus(c) {
     const geo=new T.ShapeGeometry(shape,20);geo.rotateX(-Math.PI/2);mesh(geo,m.water,0,.35,0,false);
   }
   lakes.forEach(l=>lake(l.points,l.smooth));
-  const plaza=world(873,1232); paving(plaza.x,plaza.z,74,35,m.stone,.12);
   const fieldEntries=[];
   for(const spec of buildings) {
     const {name,id,x,z,w,d,floors,kind,shape,minor}=spec;

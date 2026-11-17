@@ -16,6 +16,12 @@ export const campusAxis=(()=>{
     project(x,z){const dx=x-origin.x,dz=z-origin.z;return {distance:dx*front.x+dz*front.z,lateral:dx*right.x+dz*right.z};}
   };
 })();
+// 门体、灯具与临街铺装共用中轴朝向，避免主楼共线而南门仍沿世界 Z 轴。
+export const gatePoint=(x,z)=>campusAxis.at(campusAxis.length+z,x);
+const axisPixel=(distance,lateral=0)=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];};
+export const axisLayout={promenadeWidth:5.8,avenueWidth:8,plazaX:10,plazaZ:8,treeRows:[8.6,16.8]};
+export const axisTreeSites=[97,105,113,121,137,145,153].flatMap(distance=>axisLayout.treeRows.flatMap(lateral=>
+  lateral<10&&Math.abs(distance-campusAxis.motto)<12?[]:[-1,1].map(side=>({distance,lateral:side*lateral}))));
 export const outlinePixels = [[185,740],[224,685],[333,613],[436,590],[490,500],[515,352],[517,235],[535,187],[606,146],[662,147],[711,183],[760,207],[846,196],[904,228],[972,274],[1009,325],[1031,410],[1081,493],[1128,568],[1157,652],[1160,726],[1132,799],[1099,866],[1087,962],[1103,1090],[1135,1230],[1153,1394],[1187,1558],[1094,1558],[997,1540],[892,1524],[858,1507],[825,1507],[786,1533],[672,1525],[572,1516],[478,1508],[478,1467],[407,1459],[319,1469],[332,1331],[286,1261],[312,1210],[383,1149],[441,1092],[475,1005],[466,929],[448,894],[405,889],[363,925],[331,920],[280,884],[270,834],[277,783]];
 export const outline = outlinePixels.map(([x,y])=>world(x,y));
 export function inside(x,z) {
@@ -28,8 +34,8 @@ export function inside(x,z) {
 }
 // 南门临街侧增加与门前铺装一致的步行范围，其余边界沿用校园地图。
 export function walkable(x,z) {
-  const gate=world(841,1510);
-  return inside(x,z)||(Math.abs(x-gate.x)<16*gateScale && z>gate.z-13*gateScale && z<gate.z+29.5*gateScale);
+  const p=campusAxis.project(x,z),zGate=p.distance-campusAxis.length;
+  return inside(x,z)||(Math.abs(p.lateral)<16*gateScale && zGate>-13*gateScale && zGate<29.5*gateScale);
 }
 export function height(x,z) {
   const p=world(828,306);
@@ -47,16 +53,16 @@ export const roadLines = [
   {name:'生活区道路',width:4.7,points:[[317,707],[409,716],[507,729],[601,740]]},
   {name:'东侧道路',width:5.3,points:[[930,600],[944,663],[938,736],[914,830],[886,911],[890,1010],[879,1101]]},
   {name:'中区道路',width:4.4,points:[[604,742],[716,753],[831,758],[939,737],[1039,773],[1096,809]]},
-  {name:'教学区道路',width:4.8,points:[[444,1167],[552,1172],[659,1182],[776,1197],[881,1208],[997,1224],[1111,1233]]},
+  {name:'教学区道路',width:4.8,points:[[444,1167],[552,1172],[659,1182],axisPixel(29,-42),axisPixel(29,-24),axisPixel(29),axisPixel(29,24),axisPixel(29,42),[1111,1233]]},
   {name:'主楼东路',width:4.7,points:[[997,1088],[993,1176],[985,1280],[979,1387],[935,1413],[876,1430],[869,1507]]},
   {name:'体育场西路',width:4.5,points:[[446,1166],[439,1255],[432,1355]]},
   {name:'体育场东路',width:5,points:[[776,1197],[752,1292],[738,1403],[730,1483]]},
-  {name:'体育场南路',width:5.3,points:[[339,1359],[445,1368],[563,1380],[680,1388],[738,1403],[800,1430],[876,1430],[971,1448],[1115,1471]]},
-  {name:'南门道路',width:5.8,points:[[475,1457],[591,1468],[730,1483],[827,1494],[841,1494]]},
+  {name:'体育场南路',width:5.3,points:[[339,1359],[445,1368],[563,1380],[680,1388],[738,1403],axisPixel(129,-34),axisPixel(129,-17),axisPixel(129),axisPixel(129,17),axisPixel(129,34),[971,1448],[1115,1471]]},
+  {name:'南门道路',width:5.8,points:[[475,1457],[591,1468],[730,1483],axisPixel(campusAxis.length-7,-12),axisPixel(campusAxis.length-7)]},
   {name:'西门道路',width:4.8,points:[[292,1235],[341,1276],[438,1255]]},
   {name:'主楼前路',width:3.5,points:[[776,1197],[791,1132],[803,1086],[877,1090],[997,1117]]}
 ];
-roadLines.push({name:'南门中轴路',width:8,points:[111,132,campusAxis.length].map(s=>{const p=campusAxis.at(s);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})});
+roadLines.push({name:'南门中轴路',width:axisLayout.avenueWidth,points:[campusAxis.motto+axisLayout.plazaZ,139,campusAxis.length-16*gateScale].map(s=>axisPixel(s))});
 export const paths = [
  [[642,331],[732,336],[797,321],[856,336],[921,382],[985,443],[1012,489]],
  [[646,345],[707,358],[755,351],[807,369],[819,414],[800,465],[820,524]],
@@ -64,8 +70,6 @@ export const paths = [
  [[606,653],[553,660],[535,705],[591,718]],[[620,650],[662,690],[719,655],[752,704],[800,729]],
  [[608,764],[748,797],[785,849],[798,908],[856,1005],[882,1092]],
  [[602,890],[656,870],[698,934],[749,992],[784,1078]],
- [[780,1221],[831,1250],[851,1317],[803,1377],[878,1408]],
- [[990,1240],[954,1277],[967,1345],[881,1384],[830,1346],[802,1302]],
  [[391,743],[371,860],[482,884],[514,939]],
  [[453,1206],[507,1196],[526,1231],[506,1267],[452,1262]]
 ];
@@ -135,7 +139,8 @@ for(const [i,x,y] of [[18,364,1383],[16,418,1389],[17,483,1395],[14,552,1402],[2
 }
 export const categoryNames={study:'教学科研',life:'生活服务',sport:'运动场地',gate:'校园出入口'};
 function axisLake(name,points) {return {name,smooth:true,points:points.map(([lateral,distance])=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})};}
+// 统一两侧湖区与步道的景观对景；轮廓为航拍估计，不是测绘岸线。
+const axisLakeProfile=[[6.8,64],[17,62],[28,68],[31,80],[26,91],[17,95],[10,89],[11,78],[6.8,72]];
 export const lakes=[{name:'天鹅湖',points:[[517,642],[532,651],[527,671],[541,695],[529,715],[504,714],[497,696],[499,669]]},
-  axisLake('日湖',[[6,62],[17,60],[28,67],[31,80],[26,91],[17,95],[10,89],[11,78],[6,71]]),
-  axisLake('月湖',[[-6,62],[-15,61],[-26,68],[-30,78],[-26,91],[-17,94],[-10,88],[-12,78],[-6,71]])];
+  axisLake('日湖',axisLakeProfile),axisLake('月湖',axisLakeProfile.map(([x,z])=>[-x,z]))];
 export const tourIds=['doorSouth','main','stadium','xuezi','library','ning'];

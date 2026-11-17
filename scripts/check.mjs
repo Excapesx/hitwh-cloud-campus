@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis,gateScale,colonnadeLayout,colonnadePoint } from '../src/campus-data.js';
+import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis,gateScale,gatePoint,axisTreeSites,lakes,axisLayout,colonnadeLayout,colonnadePoint } from '../src/campus-data.js';
 import { southGateSolids } from '../src/south-gate.js';
 import { mainBuildingSolids } from '../src/main-axis.js';
 import { normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from '../src/weather-state.js';
@@ -14,6 +14,20 @@ assert(inside(world(841,1484).x,world(841,1484).z),'Walk spawn outside campus');
 const gate=buildings.find(b=>b.id==='doorSouth');
 const end=campusAxis.at(campusAxis.length);
 assert(Math.hypot(end.x-gate.x,end.z-gate.z)<1e-8,'Main axis must terminate at south gate');
+// Check the delivered plan rather than just the landmark centres: gate frame,
+// avenue vertices, reflected planting and lake contours must share one basis.
+for(const z of [-12,0,12]) {
+  const p=gatePoint(0,z),a=campusAxis.project(p.x,p.z);
+  assert(Math.abs(a.lateral)<1e-8&&Math.abs(a.distance-campusAxis.length-z)<1e-8,'Gate approach bends off axis');
+}
+const avenue=roadLines.find(r=>r.name==='南门中轴路');
+for(const [x,y] of avenue.points){const p=world(x,y);assert(Math.abs(campusAxis.project(p.x,p.z).lateral)<1e-8,'Avenue bends off axis');}
+assert.equal(avenue.width,axisLayout.avenueWidth);
+for(const a of axisTreeSites)assert(axisTreeSites.some(b=>b.distance===a.distance&&b.lateral===-a.lateral),'Missing mirrored avenue tree');
+const lakeLocal=name=>lakes.find(l=>l.name===name).points.map(([x,y])=>{const p=world(x,y);return campusAxis.project(p.x,p.z);});
+const day=lakeLocal('日湖'),moon=lakeLocal('月湖');
+assert.equal(day.length,moon.length);
+for(let i=0;i<day.length;i++)assert(Math.abs(day[i].lateral+moon[i].lateral)<1e-8&&Math.abs(day[i].distance-moon[i].distance)<1e-8,'Lake landscape loses bilateral alignment');
 assert(Math.abs(campusAxis.project(main.x,main.z).lateral)<1e-8,'Main building off axis');
 assert(campusAxis.colonnade>22&&campusAxis.motto>campusAxis.colonnade&&campusAxis.motto<campusAxis.length,'Axis landmark order');
 for(const distance of [campusAxis.colonnade,campusAxis.motto,campusAxis.length]) {
@@ -33,7 +47,7 @@ for(let i=0;i<colonnadeLayout.pairs;i++)for(const row of [-1,1]) {
 for(let distance=23;distance<=50;distance++)assert(!mainBuildingSolids.some(s=>Math.abs(s.x)<s.w/2+.35&&Math.abs(distance-s.z)<s.d/2+.35),'Main forecourt blocks axial approach');
 for(let t=-11;t<=28;t++) {
   const z=t*gateScale;
-  assert(walkable(gate.x,gate.z+z),'South gate approach is not walkable');
+  const p=gatePoint(0,z);assert(walkable(p.x,p.z),'South gate approach is not walkable');
   assert(!southGateSolids.some(s=>Math.abs(s.x)<s.w/2+.35&&Math.abs(z-s.z)<s.d/2+.35&&s.y<1.7&&s.y+s.h>.08),'South gate arch blocks central passage');
 }
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');

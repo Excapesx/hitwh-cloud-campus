@@ -1,5 +1,5 @@
 import { defaultWeather, normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from './weather-state.js';
-import { height, world, campusAxis, gateScale } from './campus-data.js';
+import { height, campusAxis, gateScale, gatePoint } from './campus-data.js';
 
 const storageKey='hitwh-weather-v1';
 export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen}) {
@@ -30,12 +30,13 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
   }});
 
   // 有限数量的真实灯具，窗格采用共享自发光材质；不为每扇窗新增灯光。
-  const gate=world(841,1510),nightLights=[];
+  const nightLights=[];
   for(const side of [-1,1]) {
     for(const wash of [false,true]) {
       const light=new T.SpotLight(wash?0xffcd88:0xffe6b5,0,(wash?34:48)*gateScale,wash?.92:1.02,.75,2);
-      light.position.set(gate.x+side*(wash?9:14.5)*gateScale,(wash?1.5:10.4)*gateScale,gate.z+(wash?5:12)*gateScale);
-      light.target.position.set(gate.x+side*(wash?6:9)*gateScale,(wash?9:0)*gateScale,gate.z+(wash?0:22)*gateScale);
+      const p=gatePoint(side*(wash?9:14.5)*gateScale,(wash?5:12)*gateScale),target=gatePoint(side*(wash?6:9)*gateScale,(wash?0:22)*gateScale);
+      light.position.set(p.x,(wash?1.5:10.4)*gateScale,p.z);
+      light.target.position.set(target.x,(wash?9:0)*gateScale,target.z);
       scene.add(light,light.target);nightLights.push({light,power:(wash?210:360)*gateScale**2});
     }
   }

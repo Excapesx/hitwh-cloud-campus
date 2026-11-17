@@ -214,7 +214,7 @@ function init(T, PointerLockControls) {
   const held=new Set(), movementKeys=new Set(['KeyW','KeyA','KeyS','KeyD']);
   const velocity=new T.Vector3(), desired=new T.Vector3();
   const viewDirection=new T.Vector3(), forward=new T.Vector3(), right=new T.Vector3();
-  const spawn=world(841,1484);
+  const spawn=campusAxis.at(campusAxis.length-12);
   walkCam.position.set(spawn.x,height(spawn.x,spawn.z)+eyeHeight,spawn.z);
   const mainView=world(879,1141);
   walkCam.lookAt(mainView.x,eyeHeight,mainView.z);
@@ -224,14 +224,14 @@ function init(T, PointerLockControls) {
   const orbitTarget=new T.Vector3(-12,7,0);
   const targetGoal=orbitTarget.clone();
   let autoRotate=false,labelsVisible=true,selected=null,tourIndex=-1,tourAt=0,viewingAxis=false,detailFocus='main';
-  const landing=world(841,1484);
+  const landing=campusAxis.at(campusAxis.length-12);
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const pointerAvailable=typeof canvas.requestPointerLock==='function' && matchMedia('(any-pointer: fine)').matches;
   const weather=createWeatherSystem(T,scene,rendering,{landmarks,canvas,
     unlock(){if(document.pointerLockElement===canvas)controls.unlock();stopMoving();},
     onOpen(){el('directory').hidden=true;el('directoryToggle').setAttribute('aria-expanded','false');if(innerWidth<700)el('detail').hidden=true;}
   });
-  function fitDistance() { return Math.max(1,(['doorSouth','main'].includes(selected?.id)?.98:.78)/orbitCam.aspect); }
+  function fitDistance() { return Math.max(1,(viewingAxis?.62:['doorSouth','main'].includes(selected?.id)?.98:.78)/orbitCam.aspect); }
   function locked() { return mode==='walk' && document.pointerLockElement===canvas; }
   function stopMoving() { held.clear(); velocity.set(0,0,0); accumulator=0; }
   function cancelDrag() {
@@ -554,7 +554,7 @@ function init(T, PointerLockControls) {
     selectOrbit();selected=entry;
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
     targetRadius=Math.max(160,Math.max(entry.spec.w,entry.spec.d)*3.6);
-    if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5*gateScale,entry.z);targetRadius=63*gateScale;azimuth=0;elevation=.055; }
+    if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5*gateScale,entry.z);targetRadius=63*gateScale;azimuth=campusAxis.yaw;elevation=.055; }
     if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,10.5,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
     detailFocus='main';el('colonnadeView').hidden=entry.id!=='main';el('colonnadeView').textContent='查看柱廊细节';
     orbitCam.near=entry.id==='doorSouth'?.35:entry.id==='main'?1.5:14;orbitCam.updateProjectionMatrix();
@@ -593,7 +593,7 @@ function init(T, PointerLockControls) {
     const entry=landmarks.find(e=>e.id==='main');focusEntry(entry);
     selectOrbit();stopTour();viewingAxis=true;detailFocus='axis';
     orbitCam.near=14;orbitCam.updateProjectionMatrix();
-    const p=campusAxis.at(92);targetGoal.set(p.x,3,p.z);targetRadius=270;azimuth=campusAxis.yaw+.12;elevation=.72;
+    const p=campusAxis.at(88);targetGoal.set(p.x,3,p.z);targetRadius=257;azimuth=campusAxis.yaw;elevation=.79;
     el('axisView').textContent='查看主楼正面';
   }
   el('axisView').addEventListener('click',()=>viewingAxis?focusEntry(landmarks.find(e=>e.id==='main')):showAxis());

@@ -171,8 +171,8 @@ export function setupRealisticRendering(T,renderer,scene) {
 }
 
 export function addGatePlanting(T,scene) {
-  const gate=world(841,1510),sites=[];
-  for(const side of [-1,1])for(let n=0;n<3;n++)sites.push({x:gate.x+side*(12+n*1.3),z:gate.z-7-n*10.5,h:7.2+n*.6});
+  const sites=[];
+  for(const side of [-1,1])sites.push({...campusAxis.at(campusAxis.length-6,side*12),h:7.2});
   const foliageGeo=new T.SphereGeometry(1,12,8),p=foliageGeo.attributes.position;
   for(let i=0;i<p.count;i++) {
     const x=p.getX(i),y=p.getY(i),z=p.getZ(i),r=1+.11*Math.sin(x*13+y*17+z*11);p.setXYZ(i,x*r,y*r,z*r);

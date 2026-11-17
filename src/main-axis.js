@@ -1,6 +1,6 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { campusAxis, mainScale } from './campus-data.js';
+import { campusAxis, mainScale, axisLayout, axisTreeSites } from './campus-data.js';
 import { surfaceMaterial } from './realism.js';
 import { buildColonnade } from './colonnade.js';
 
@@ -173,16 +173,46 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   for(const y of [38.1,39.3,40.8,42.4])cylinder(0,y,-2.7,.18,.13,glow,.18,12);
   entry.top=44*mainScale.y;
 
-  // 前庭铺装、两侧种植带。整条轴线统一局部坐标，入口、廊、石、门共线。
+  // 前庭、双湖步道、校训石广场统一使用中轴坐标。地面高于旧道路，
+  // 避免旧描图的沥青与斜线小路切穿主楼—柱廊的连续铺装。
+  const edging=surfaceMaterial(T,'paving',{color:0x929b8c,roughness:.9});
+  function ribbon(points,width,material=granite,y=.36,closed=false) {
+    const curve=new T.CatmullRomCurve3(points.map(([x,z])=>new T.Vector3(x,y,z)),closed,'centripetal');
+    const n=Math.max(32,Math.ceil(curve.getLength()*3)),positions=[],uv=[],indices=[];
+    for(let i=0;i<=n;i++) {
+      const p=curve.getPoint(i/n),t=curve.getTangent(i/n);
+      for(const side of [-1,1]){positions.push(p.x-t.z*side*width/2,y,p.z+t.x*side*width/2);uv.push((side+1)/2,i/n);}
+      if(i<n){const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}
+    }
+    const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();emit(geo,material,false,false);
+  }
+  function ellipse(z,rx,rz,material,y) {
+    const g=new T.CircleGeometry(1,96);g.rotateX(-Math.PI/2);g.scale(rx,1,rz);g.translate(0,y,z);emit(g,material,false,false);
+  }
   block(0,.035,34,70,.13,56,granite,false,false);
+  block(0,.305,37.5,70,.035,49,granite,false,false);
+  for(const side of [-1,1])block(side*34.65,.343,37.5,.3,.025,49,trim,false,false);
   for(const side of [-1,1]) {
     block(side*25,.18,28,9,.18,13,trim,false,false);
     block(side*25,.37,28,8.4,.16,12.4,m.grass,false,false);
   }
   buildColonnade({T,emit,block,worldSolid,trim,glow,granite});
-  // 廊下中轴步道与南门大道相接；校训石位于加宽的分流岛上。
-  block(0,.18,(campusAxis.colonnade+campusAxis.motto)/2,5.6,.1,campusAxis.motto-campusAxis.colonnade+5,granite,false,false);
-  for(const side of [-1,1])block(side*4.2,.17,85,1.4,.08,50,granite,false,false);
+  const promenadeStart=13,promenadeEnd=campusAxis.motto-axisLayout.plazaZ;
+  block(0,.342,(promenadeStart+promenadeEnd)/2,axisLayout.promenadeWidth,.02,promenadeEnd-promenadeStart,granite,false,false);
+  for(const side of [-1,1]) {
+    // 双湖中央保持三条笔直、成对的铺装带，取消斜穿中轴的旧路径。
+    block(side*(axisLayout.promenadeWidth/2-.14),.365,(promenadeStart+promenadeEnd)/2,.18,.015,promenadeEnd-promenadeStart,edging,false,false);
+    block(side*4.3,.342,82.5,1.45,.02,41,granite,false,false);
+    ribbon([[side*17,61],[side*29,67],[side*33.3,80],[side*29,92],[side*17,98],[side*9,101],[side*5,104]],1.45,granite,.36);
+    block(side*5.8,.342,143,1.6,.02,45,granite,false,false);
+    block(side*4.65,.35,143,.22,.14,45,trim,false,false);
+  }
+  ellipse(campusAxis.motto,axisLayout.plazaX,axisLayout.plazaZ,trim,.35);
+  ellipse(campusAxis.motto,axisLayout.plazaX-.3,axisLayout.plazaZ-.3,granite,.365);
+  // 广场保持连续石材，只用细窄椭圆嵌条围合石体，避免黑色车道
+  // 再次横截中央步道。车行大道在广场南侧收口。
+  ribbon(Array.from({length:48},(_,i)=>{const a=i/48*Math.PI*2;return [Math.sin(a)*8.6,campusAxis.motto+Math.cos(a)*6.6];}),.18,edging,.385,true);
+  block(0,.37,campusAxis.motto,6.6,.12,3.3,trim,false,false,.12);
   const leaves=[0x405e39,0x4f6c42,0x5b7548].map(color=>new T.MeshStandardMaterial({color,roughness:1}));
   const bark=surfaceMaterial(T,'plaster',{color:0x6b6050,roughness:1});
   function tree(x,z,h,index) {
@@ -195,11 +225,9 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
     }
   }
   let ti=0;
-  for(let distance=99;distance<153;distance+=7.5)for(const side of [-1,1])for(const row of [8.6,16.8])tree(side*row,distance,5.7+.7*Math.sin(distance),ti++);
-  for(const side of [-1,1])for(const s of [73,84,94])tree(side*33,s,6.3,ti++);
-  for(const side of [-1,1])for(const x of [13,20])tree(side*x,15+(x-13)*.7,5.7,ti++);
-  const island=new T.CylinderGeometry(1,1,.13,64);island.scale(6.6,.9,4.5);island.translate(0,.18,campusAxis.motto);emit(island,m.asphalt,false,false);
-  block(0,.28,campusAxis.motto,5.8,.17,2.6,trim,false,false,.12);
+  for(const {distance,lateral} of axisTreeSites)tree(lateral,distance,5.9+.3*Math.sin(distance),Math.floor(distance));
+  for(const s of [73,84,94])for(const side of [-1,1])tree(side*36,s,6.3,ti);
+  for(const x of [13,20])for(const side of [-1,1])tree(side*x,15+(x-13)*.7,5.7,ti++);
   const profile=new T.Shape();profile.moveTo(-4.7,.1);profile.bezierCurveTo(-5.15,.7,-4.6,1.48,-3.55,1.67);profile.bezierCurveTo(-1.4,2.05,2.9,1.95,4.45,1.48);profile.bezierCurveTo(4.9,1.05,4.7,.4,4.3,.1);profile.closePath();
   const stoneGeo=new T.ExtrudeGeometry(profile,{depth:1.35,bevelEnabled:true,bevelSize:.18,bevelThickness:.17,bevelSegments:3,curveSegments:24});
   stoneGeo.scale(.52,.72,.62);stoneGeo.translate(0,.47,campusAxis.motto-.4);emit(stoneGeo,rock,true,false);worldSolid(0,.43,campusAxis.motto,5.2,1.7,1.5);
