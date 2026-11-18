@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis, gateScale, colonnadeLayout, colonnadePoint } from './campus-data.js';
+import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
 import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
 import { createWeatherSystem } from './weather.js';
@@ -215,6 +215,7 @@ function init(T, PointerLockControls) {
   const velocity=new T.Vector3(), desired=new T.Vector3();
   const viewDirection=new T.Vector3(), forward=new T.Vector3(), right=new T.Vector3();
   const spawn=campusAxis.at(campusAxis.length-12);
+  const displayCenter=campusAxis.at(displayLayout.distance);
   walkCam.position.set(spawn.x,height(spawn.x,spawn.z)+eyeHeight,spawn.z);
   const mainView=world(879,1141);
   walkCam.lookAt(mainView.x,eyeHeight,mainView.z);
@@ -231,7 +232,7 @@ function init(T, PointerLockControls) {
     unlock(){if(document.pointerLockElement===canvas)controls.unlock();stopMoving();},
     onOpen(){el('directory').hidden=true;el('directoryToggle').setAttribute('aria-expanded','false');if(innerWidth<700)el('detail').hidden=true;}
   });
-  function fitDistance() { return Math.max(1,(viewingAxis?.62:['doorSouth','main'].includes(selected?.id)?.98:.78)/orbitCam.aspect); }
+  function fitDistance() { return Math.max(1,(viewingAxis?.62:detailFocus==='display'?.7:['doorSouth','main'].includes(selected?.id)?.98:.78)/orbitCam.aspect); }
   function locked() { return mode==='walk' && document.pointerLockElement===canvas; }
   function stopMoving() { held.clear(); velocity.set(0,0,0); accumulator=0; }
   function cancelDrag() {
@@ -335,7 +336,7 @@ function init(T, PointerLockControls) {
   for(const type of ['pointerup','pointercancel','lostpointercapture']) canvas.addEventListener(type,event=>{
     if(event.pointerId===dragId) cancelDrag();
   });
-  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,selected?.id==='doorSouth'?12:detailFocus==='colonnade'?10:selected?.id==='main'?45:95,1200); }
+  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,selected?.id==='doorSouth'?12:['colonnade','display'].includes(detailFocus)?10:selected?.id==='main'?45:95,1200); }
   canvas.addEventListener('wheel',event=>{
     if(mode!=='orbit' || !started) return;
     event.preventDefault();
@@ -557,6 +558,7 @@ function init(T, PointerLockControls) {
     if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5*gateScale,entry.z);targetRadius=63*gateScale;azimuth=campusAxis.yaw;elevation=.055; }
     if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,10.5,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
     detailFocus='main';el('colonnadeView').hidden=entry.id!=='main';el('colonnadeView').textContent='查看柱廊细节';
+    el('displayView').hidden=entry.id!=='main';el('displayView').textContent='查看校训石前立牌';
     orbitCam.near=entry.id==='doorSouth'?.35:entry.id==='main'?1.5:14;orbitCam.updateProjectionMatrix();
     viewingAxis=false;el('axisView').hidden=entry.id!=='main';el('axisView').textContent='查看完整中轴线';
     el('detailTitle').textContent=entry.name;el('detailKind').textContent=categoryNames[entry.kind];el('detailDescription').textContent=entry.description;
@@ -605,12 +607,27 @@ function init(T, PointerLockControls) {
     el('colonnadeView').textContent='返回主楼正面';
   }
   el('colonnadeView').addEventListener('click',()=>detailFocus==='colonnade'?focusEntry(landmarks.find(e=>e.id==='main')):showColonnade());
+  function showDisplay() {
+    focusEntry(landmarks.find(e=>e.id==='main'));detailFocus='display';
+    targetGoal.set(displayCenter.x,2.1,displayCenter.z);targetRadius=22;azimuth=campusAxis.yaw;elevation=.08;
+    orbitCam.near=.25;orbitCam.updateProjectionMatrix();
+    el('detailTitle').textContent='校训石前纪念立牌';el('detailDescription').textContent='展示区位于校训石南侧。红色齿轮拱两侧是 1985 与 2026 年份底座，中间是翻开的 HIT 书本，两侧可步行绕往校训石。';
+    el('displayView').textContent='返回主楼正面';
+  }
+  el('displayView').addEventListener('click',()=>detailFocus==='display'?focusEntry(landmarks.find(e=>e.id==='main')):showDisplay());
   el('walkHere').disabled=!pointerAvailable;
   el('walkHere').addEventListener('click',()=>{
-    if(!selected)return;stopTour();const s=selected.spec;let safe=null;
-    for(let r=Math.max(s.w,s.d)*.55+4;r<130&&!safe;r+=5)for(let i=0;i<24;i++){const a=i*Math.PI/12,x=s.x+Math.sin(a)*r,z=s.z+Math.cos(a)*r;if(!occupied(x,z)){safe={x,z};break;}}
+    if(!selected)return;stopTour();
+    const atDisplay=detailFocus==='display',focus=atDisplay?displayCenter:selected.spec;
+    let safe=null;
+    if(atDisplay) {
+      const approach=campusAxis.at(displayLayout.plazaEnd+3);
+      if(!occupied(approach.x,approach.z))safe=approach;
+    }
+    const firstRadius=atDisplay?8:Math.max(focus.w,focus.d)*.55+4;
+    for(let r=firstRadius;r<130&&!safe;r+=5)for(let i=0;i<24;i++){const a=i*Math.PI/12,x=focus.x+Math.sin(a)*r,z=focus.z+Math.cos(a)*r;if(!occupied(x,z)){safe={x,z};break;}}
     if(!safe){notify('附近没有找到可用落脚点，请从南门开始漫游。');return;}
-    walkCam.position.set(safe.x,height(safe.x,safe.z)+eyeHeight,safe.z);walkCam.lookAt(s.x,height(s.x,s.z)+eyeHeight,s.z);el('detail').hidden=true;requestWalk();
+    walkCam.position.set(safe.x,height(safe.x,safe.z)+eyeHeight,safe.z);walkCam.lookAt(focus.x,height(focus.x,focus.z)+eyeHeight,focus.z);el('detail').hidden=true;requestWalk();
   });
   function showReference() {if(document.pointerLockElement===canvas)controls.unlock();lastFocus=document.activeElement;el('reference').showModal();}
   el('referenceToggle').addEventListener('click',showReference);el('fallbackMap').addEventListener('click',showReference);
@@ -651,6 +668,7 @@ function init(T, PointerLockControls) {
     if(location.hash==='#main')focusEntry(landmarks.find(e=>e.id==='main'));
     if(location.hash==='#main-axis')showAxis();
     if(location.hash==='#colonnade')showColonnade();
+    if(location.hash==='#display')showDisplay();
   }
   window.addEventListener('hashchange',openHash);openHash();
   window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality,weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
@@ -725,7 +743,8 @@ function init(T, PointerLockControls) {
     const nearMain=mode==='orbit'?selected?.id==='main'&&!viewingAxis&&radius<160:Math.hypot(walkCam.position.x-campusAxis.origin.x,walkCam.position.z-campusAxis.origin.z)<82;
     const columnCenter=campusAxis.at(campusAxis.colonnade);
     const nearColumn=mode==='orbit'?selected?.id==='main'&&detailFocus==='colonnade':Math.hypot(walkCam.position.x-columnCenter.x,walkCam.position.z-columnCenter.z)<21;
-    const detailArea=nearGate?'gate':nearColumn?'colonnade':nearMain?'main':false;
+    const nearDisplay=mode==='orbit'?selected?.id==='main'&&detailFocus==='display':Math.hypot(walkCam.position.x-displayCenter.x,walkCam.position.z-displayCenter.z)<17;
+    const detailArea=nearDisplay?'display':nearGate?'gate':nearColumn?'colonnade':nearMain?'main':false;
     const activeCamera=mode==='orbit'?orbitCam:walkCam;
     const fit=mode==='orbit'?fitDistance():1;
     weather.update(elapsed,activeCamera,detailArea,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});

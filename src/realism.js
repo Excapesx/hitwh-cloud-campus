@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { world, height, campusAxis, gateScale } from './campus-data.js';
+import { world, height, campusAxis, gateScale, displayLayout } from './campus-data.js';
 
 // 世界坐标材质：细部尺度不随几何的 UV 展开或合批而改变；没有外部贴图请求。
 const surfaceGLSL=`
@@ -136,10 +136,10 @@ export function setupRealisticRendering(T,renderer,scene) {
   const supportsAO=renderer.extensions.has('EXT_color_buffer_float');
   function setShadowArea(close) {
     if(detailed===close)return;detailed=close;
-    const main=campusAxis.at(close==='colonnade'?campusAxis.colonnade:16),isMain=close==='main'||close==='colonnade';
-    target.set(isMain?main.x:close?gate.x:-12,close==='colonnade'?3:close==='main'?12:close?4*gateScale:0,isMain?main.z:close?gate.z:0);
+    const main=campusAxis.at(close==='display'?displayLayout.distance:close==='colonnade'?campusAxis.colonnade:16),isMain=['main','colonnade','display'].includes(close);
+    target.set(isMain?main.x:close?gate.x:-12,close==='display'?2:close==='colonnade'?3:close==='main'?12:close?4*gateScale:0,isMain?main.z:close?gate.z:0);
     moveSun();
-    const span=close==='colonnade'?25:close==='main'?84:close?31:390;
+    const span=close==='display'?18:close==='colonnade'?25:close==='main'?84:close?31:390;
     sun.shadow.camera.left=sun.shadow.camera.bottom=-span;sun.shadow.camera.right=sun.shadow.camera.top=span;
     sun.shadow.camera.updateProjectionMatrix();sun.target.updateMatrixWorld();sun.updateMatrixWorld();renderer.shadowMap.needsUpdate=true;
   }

@@ -20,6 +20,8 @@ export const campusAxis=(()=>{
 export const gatePoint=(x,z)=>campusAxis.at(campusAxis.length+z,x);
 const axisPixel=(distance,lateral=0)=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];};
 export const axisLayout={promenadeWidth:5.8,avenueWidth:8,plazaX:10,plazaZ:8,treeRows:[8.6,16.8]};
+// 新照片：纪念立牌位于校训石南侧的独立展示区，面朝南门。
+export const displayLayout={distance:123,width:9.8,depth:2.6,plazaWidth:24,plazaEnd:128};
 export const axisTreeSites=[97,105,113,121,137,145,153].flatMap(distance=>axisLayout.treeRows.flatMap(lateral=>
   lateral<10&&Math.abs(distance-campusAxis.motto)<12?[]:[-1,1].map(side=>({distance,lateral:side*lateral}))));
 export const outlinePixels = [[185,740],[224,685],[333,613],[436,590],[490,500],[515,352],[517,235],[535,187],[606,146],[662,147],[711,183],[760,207],[846,196],[904,228],[972,274],[1009,325],[1031,410],[1081,493],[1128,568],[1157,652],[1160,726],[1132,799],[1099,866],[1087,962],[1103,1090],[1135,1230],[1153,1394],[1187,1558],[1094,1558],[997,1540],[892,1524],[858,1507],[825,1507],[786,1533],[672,1525],[572,1516],[478,1508],[478,1467],[407,1459],[319,1469],[332,1331],[286,1261],[312,1210],[383,1149],[441,1092],[475,1005],[466,929],[448,894],[405,889],[363,925],[331,920],[280,884],[270,834],[277,783]];
@@ -62,7 +64,7 @@ export const roadLines = [
   {name:'西门道路',width:4.8,points:[[292,1235],[341,1276],[438,1255]]},
   {name:'主楼前路',width:3.5,points:[[776,1197],[791,1132],[803,1086],[877,1090],[997,1117]]}
 ];
-roadLines.push({name:'南门中轴路',width:axisLayout.avenueWidth,points:[campusAxis.motto+axisLayout.plazaZ,139,campusAxis.length-16*gateScale].map(s=>axisPixel(s))});
+roadLines.push({name:'南门中轴路',width:axisLayout.avenueWidth,points:[displayLayout.plazaEnd,139,campusAxis.length-16*gateScale].map(s=>axisPixel(s))});
 export const paths = [
  [[642,331],[732,336],[797,321],[856,336],[921,382],[985,443],[1012,489]],
  [[646,345],[707,358],[755,351],[807,369],[819,414],[800,465],[820,524]],

@@ -1,5 +1,5 @@
 import { defaultWeather, normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from './weather-state.js';
-import { height, campusAxis, gateScale, gatePoint } from './campus-data.js';
+import { height, campusAxis, gateScale, gatePoint, displayLayout } from './campus-data.js';
 
 const storageKey='hitwh-weather-v1';
 export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen}) {
@@ -30,7 +30,7 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
   }});
 
   // 有限数量的真实灯具，窗格采用共享自发光材质；不为每扇窗新增灯光。
-  const nightLights=[];
+  const gate=campusAxis.end,nightLights=[];
   for(const side of [-1,1]) {
     for(const wash of [false,true]) {
       const light=new T.SpotLight(wash?0xffcd88:0xffe6b5,0,(wash?34:48)*gateScale,wash?.92:1.02,.75,2);
@@ -44,6 +44,11 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
     const p=campusAxis.at(12,side*18),target=campusAxis.at(1,side*15);
     const light=new T.SpotLight(0xffd093,0,38,.98,.8,2);light.position.set(p.x,2.2,p.z);light.target.position.set(target.x,11,target.z);
     scene.add(light,light.target);nightLights.push({light,power:290});
+  }
+  for(const side of [-1,1]) {
+    const p=campusAxis.at(displayLayout.distance+2,side*4.5),target=campusAxis.at(displayLayout.distance);
+    const light=new T.SpotLight(0xffe3b8,0,12,.96,.85,2);light.position.set(p.x,.8,p.z);light.target.position.set(target.x,1.8,target.z);
+    scene.add(light,light.target);nightLights.push({light,power:24});
   }
   const maxParticles=1800,positions=new Float32Array(maxParticles*3),floor=new Float32Array(maxParticles);
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage));
@@ -112,15 +117,15 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
       if(Math.abs(a.night-lastLit)>.005) {
         lastLit=a.night;
         for(const material of windows){material.emissive.setHex(0xffcd85);material.emissiveIntensity=a.night*.55*(material.userData.nightBrightness??1);}
-        for(const material of lamps){material.emissive.setHex(0xffe6b5);material.emissiveIntensity=a.night*2.5;}
-        for(const material of outlines){material.emissive.setHex(0xffc469);material.emissiveIntensity=a.night*2.1;}
+        for(const material of lamps){material.emissive.setHex(material.userData.nightColor??0xffe6b5);material.emissiveIntensity=a.night*(material.userData.nightPower??2.5);}
+        for(const material of outlines){material.emissive.setHex(material.userData.nightColor??0xffc469);material.emissiveIntensity=a.night*(material.userData.nightPower??2.1);}
         for(const material of facades){material.emissive.setHex(0xffc77d);material.emissiveIntensity=a.night*.018;}
         for(const {light,power} of nightLights)light.intensity=power*a.night;
       }
       const falling=['rain','snow'].includes(state.type)&&state.particles&&state.intensity>0;
       particles.visible=falling;
       if(!falling){particleMode='';return;}
-      const center=close==='colonnade'?campusAxis.at(campusAxis.colonnade):close==='main'?campusAxis.at(20):{x:gate.x,z:gate.z+9};
+      const center=close==='display'?campusAxis.at(displayLayout.distance):close==='colonnade'?campusAxis.at(campusAxis.colonnade):close==='main'?campusAxis.at(20):{x:gate.x,z:gate.z+9};
       const nextAnchor=mode==='walk'?{x:camera.position.x,z:camera.position.z,w:80,d:80,close:true}:close?{x:center.x,z:center.z,w:135,d:130,close:true}:{x:0,z:0,w:580,d:780,close:false};
       const changed=particleMode!==state.type||!resetAnchor||resetAnchor.close!==nextAnchor.close||Math.hypot(resetAnchor.x-nextAnchor.x,resetAnchor.z-nextAnchor.z)>20;
       anchor=nextAnchor;

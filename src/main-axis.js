@@ -1,8 +1,9 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { campusAxis, mainScale, axisLayout, axisTreeSites } from './campus-data.js';
+import { campusAxis, mainScale, axisLayout, axisTreeSites, displayLayout } from './campus-data.js';
 import { surfaceMaterial } from './realism.js';
 import { buildColonnade } from './colonnade.js';
+import { buildCommemorativeDisplay } from './commemorative-display.js';
 
 // 本地 +Z 是朝向南门的正面；两翼向 +Z 围合前庭，不再向背面伸出。
 const bodySolids=[
@@ -209,6 +210,10 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   }
   ellipse(campusAxis.motto,axisLayout.plazaX,axisLayout.plazaZ,trim,.35);
   ellipse(campusAxis.motto,axisLayout.plazaX-.3,axisLayout.plazaZ-.3,granite,.365);
+  // 校训石南面另外留出纪念立牌的展示前场，和原椭圆广场相连。
+  const displayPaving=surfaceMaterial(T,'paving',{color:0xc5ad91,roughness:.86});
+  block(0,.325,displayLayout.plazaEnd-5,displayLayout.plazaWidth,.035,10,displayPaving,false,false);
+  for(const side of [-1,1])block(side*(displayLayout.plazaWidth/2-.13),.365,displayLayout.plazaEnd-5,.22,.025,10,trim,false,false);
   // 广场保持连续石材，只用细窄椭圆嵌条围合石体，避免黑色车道
   // 再次横截中央步道。车行大道在广场南侧收口。
   ribbon(Array.from({length:48},(_,i)=>{const a=i/48*Math.PI*2;return [Math.sin(a)*8.6,campusAxis.motto+Math.cos(a)*6.6];}),.18,edging,.385,true);
@@ -232,6 +237,7 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   const stoneGeo=new T.ExtrudeGeometry(profile,{depth:1.35,bevelEnabled:true,bevelSize:.18,bevelThickness:.17,bevelSegments:3,curveSegments:24});
   stoneGeo.scale(.52,.72,.62);stoneGeo.translate(0,.47,campusAxis.motto-.4);emit(stoneGeo,rock,true,false);worldSolid(0,.43,campusAxis.motto,5.2,1.7,1.5);
   const motto=new T.PlaneGeometry(4.3,.83);motto.translate(0,1.15,campusAxis.motto+.55);emit(motto,sign('规格严格  功夫到家',4.3,.83,'#963e26'),false,false);
+  buildCommemorativeDisplay({T,emit,block,worldSolid,trim});
 
   for(const {material,cast,selectable,parts} of buckets.values()) {
     const merged=mergeGeometries(parts,false);merged.rotateY(yaw);

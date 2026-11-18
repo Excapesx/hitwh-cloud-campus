@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis,gateScale,gatePoint,axisTreeSites,lakes,axisLayout,colonnadeLayout,colonnadePoint } from '../src/campus-data.js';
+import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis,gateScale,gatePoint,axisTreeSites,lakes,axisLayout,colonnadeLayout,colonnadePoint,displayLayout } from '../src/campus-data.js';
 import { southGateSolids } from '../src/south-gate.js';
 import { mainBuildingSolids } from '../src/main-axis.js';
 import { normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from '../src/weather-state.js';
@@ -23,6 +23,10 @@ for(const z of [-12,0,12]) {
 const avenue=roadLines.find(r=>r.name==='南门中轴路');
 for(const [x,y] of avenue.points){const p=world(x,y);assert(Math.abs(campusAxis.project(p.x,p.z).lateral)<1e-8,'Avenue bends off axis');}
 assert.equal(avenue.width,axisLayout.avenueWidth);
+assert(campusAxis.motto<displayLayout.distance&&displayLayout.distance+displayLayout.depth/2<displayLayout.plazaEnd&&displayLayout.plazaEnd<campusAxis.length,'Display must stand on its own forecourt in front of the motto stone');
+assert(displayLayout.plazaWidth-displayLayout.width>4,'Display must leave pedestrian space on both sides');
+const avenueStart=world(...avenue.points[0]);
+assert(Math.abs(campusAxis.project(avenueStart.x,avenueStart.z).distance-displayLayout.plazaEnd)<1e-8,'Avenue must stop before the display forecourt');
 for(const a of axisTreeSites)assert(axisTreeSites.some(b=>b.distance===a.distance&&b.lateral===-a.lateral),'Missing mirrored avenue tree');
 const lakeLocal=name=>lakes.find(l=>l.name===name).points.map(([x,y])=>{const p=world(x,y);return campusAxis.project(p.x,p.z);});
 const day=lakeLocal('日湖'),moon=lakeLocal('月湖');
