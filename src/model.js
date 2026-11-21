@@ -35,6 +35,13 @@ export function buildTerrain({T,mesh,box,m}) {
 
 export function buildCampus(c) {
   const {T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,roads,addCollider}=c;
+  function footprintGround(x,z,w,d) {
+    const halfW=w/2,halfD=d/2;
+    return Math.min(
+      height(x-halfW,z-halfD),height(x+halfW,z-halfD),
+      height(x-halfW,z+halfD),height(x+halfW,z+halfD)
+    );
+  }
   function ribbon(points,width,material,lift=.24,offset=0) {
     const raw=points.map(([x,y])=>world(x,y));
     const curve=new T.CatmullRomCurve3(raw.map(p=>new T.Vector3(p.x,0,p.z)),false,'centripetal');
@@ -116,7 +123,8 @@ export function buildCampus(c) {
     const detail=id==='racing'?'按汽车训练场照片补充深色铺装、透空绿围网和侧边入口。':desc;
     const entry=landmark(name,id,detail,x,z,kind,['main','library','stadium','doorSouth'].includes(id)?0:minor?3:1);
     Object.assign(entry,{id,spec});
-    const y=height(x,z), material=kind==='life'?m.dorm:kind==='sport'?m.blue:m.light;
+    const y=(shape==='main'||kind==='gate')?height(x,z):footprintGround(x,z,w,d);
+    const material=kind==='life'?m.dorm:kind==='sport'?m.blue:m.light;
     const h=floors*2.9;
     if(id==='doorSouth') {
       buildSouthGate(c,entry);
@@ -247,7 +255,7 @@ export function buildCampus(c) {
     const occupied=[...buildings,...interiorFillBuildings,...contextBuildings];
     if(occupied.some(b=>b!==spec&&Math.hypot(b.x-spec.x,b.z-spec.z)<Math.max(b.w,b.d,spec.w,spec.d)*.62))return;
     if(!edge&&roads.some(road=>distanceToRoad(spec.x,spec.z,road)<Math.min(spec.w,spec.d)*.45))return;
-    const y=height(spec.x,spec.z),h=spec.floors*2.7,mat=contextMats[spec.tone]||m.light;
+    const y=footprintGround(spec.x,spec.z,spec.w,spec.d),h=spec.floors*2.7,mat=contextMats[spec.tone]||m.light;
     box(spec.x,y,spec.z,spec.w,spec.d,h,mat);
     box(spec.x,y+h-.34,spec.z,spec.w+.22,spec.d+.22,.34,m.trim);
     box(spec.x,y+h+.08,spec.z,spec.w*.72,spec.d*.72,.18,m.roof);
