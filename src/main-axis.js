@@ -1,6 +1,6 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { campusAxis, mainScale, axisLayout, axisTreeSites, displayLayout } from './campus-data.js';
+import { campusAxis, mainScale, axisLayout, displayLayout } from './campus-data.js';
 import { surfaceMaterial } from './realism.js';
 import { buildColonnade } from './colonnade.js';
 import { buildCommemorativeDisplay } from './commemorative-display.js';
@@ -249,21 +249,6 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   // 再次横截中央步道。车行大道在广场南侧收口。
   ribbon(Array.from({length:48},(_,i)=>{const a=i/48*Math.PI*2;return [Math.sin(a)*8.6,campusAxis.motto+Math.cos(a)*6.6];}),.18,edging,.385,true);
   block(0,.37,campusAxis.motto,6.6,.12,3.3,trim,false,false,.12);
-  const leaves=[0x405e39,0x4f6c42,0x5b7548].map(color=>new T.MeshStandardMaterial({color,roughness:1}));
-  const bark=surfaceMaterial(T,'plaster',{color:0x6b6050,roughness:1});
-  function tree(x,z,h,index) {
-    const trunk=new T.CylinderGeometry(.12,.21,h*.69,9);trunk.translate(x,h*.345,z);emit(trunk,bark,true,false);
-    for(let clump=0;clump<5;clump++) {
-      const a=clump*Math.PI*.76,spread=clump===4?.15:1.05;
-      const g=new T.SphereGeometry(1,12,8),p=g.attributes.position;
-      for(let i=0;i<p.count;i++){const xx=p.getX(i),yy=p.getY(i),zz=p.getZ(i),f=1+.09*Math.sin(xx*19+yy*17+zz*13+index);p.setXYZ(i,xx*f,yy*f,zz*f);}
-      g.computeVertexNormals();g.scale(h*.25,h*.25,h*.22);g.translate(x+Math.cos(a)*spread,h*(.58+clump*.05),z+Math.sin(a)*spread);emit(g,leaves[(index+clump)%3],true,false);
-    }
-  }
-  let ti=0;
-  for(const {distance,lateral} of axisTreeSites)tree(lateral,distance,5.9+.3*Math.sin(distance),Math.floor(distance));
-  for(const s of [73,84,94])for(const side of [-1,1])tree(side*36,s,6.3,ti);
-  for(const x of [13,20])for(const side of [-1,1])tree(side*x,15+(x-13)*.7,5.7,ti++);
   const profile=new T.Shape();profile.moveTo(-4.7,.1);profile.bezierCurveTo(-5.15,.7,-4.6,1.48,-3.55,1.67);profile.bezierCurveTo(-1.4,2.05,2.9,1.95,4.45,1.48);profile.bezierCurveTo(4.9,1.05,4.7,.4,4.3,.1);profile.closePath();
   const stoneGeo=new T.ExtrudeGeometry(profile,{depth:1.35,bevelEnabled:true,bevelSize:.18,bevelThickness:.17,bevelSegments:3,curveSegments:24});
   stoneGeo.scale(.52,.72,.62);stoneGeo.translate(0,.47,campusAxis.motto-.4);emit(stoneGeo,rock,true,false);worldSolid(0,.43,campusAxis.motto,5.2,1.7,1.5);

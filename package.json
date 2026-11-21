@@ -8,6 +8,11 @@
     "dev": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs"
   },
-  "dependencies": { "three": "0.187.0" },
-  "devDependencies": { "esbuild": "0.27.0" }
+  "dependencies": {
+    "@dgreenheck/ez-tree": "^1.1.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.0"
+  }
 }

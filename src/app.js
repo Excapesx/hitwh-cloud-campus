@@ -1,11 +1,12 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
+import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis, axisTreeSites, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
-import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
+import { setupRealisticRendering, surfaceMaterial } from './realism.js';
 import { createWeatherSystem } from './weather.js';
 import { photoBuildings } from './photo-buildings.js';
+import { Tree as EzTree, TreePreset } from '@dgreenheck/ez-tree';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
  console.error(error);el('boot').textContent='三维场景未能启动。请用支持 WebGL 2 的 Chrome 或 Edge 打开；也可以查看原始地图。';
@@ -154,11 +155,57 @@ function init(T, PointerLockControls) {
   windowMesh.receiveShadow=true;
   scene.add(windowMesh);
 
-  // ── 树木 ── 126 棵树，树干、下层树冠、上层树冠各用一个 InstancedMesh。
+  // ── 树木 ── 采用 EZ-Tree 的 Oak/Ash 大型阔叶预设，保留分级枝干、树皮纹理和叶片卡片。
   let seed=917113;
   function random() {
     seed=(Math.imul(seed,1664525)+1013904223)>>>0;
     return seed/4294967296;
+  }
+  const ezTreePrototypes=[];
+  function createEzTree(preset,seedValue,leafTint=0x7ca85a,barkTint=0xe2c48c) {
+    const options=structuredClone(TreePreset[preset]);
+    options.seed=seedValue;
+    options.leaves.tint=leafTint;
+    options.bark.tint=barkTint;
+    options.leaves.billboard='double';
+    options.leaves.count=Math.round(options.leaves.count*3.2);
+    options.leaves.size*=2.05;
+    options.leaves.sizeVariance=.82;
+    options.leaves.alphaTest=.5;
+    const tree=new EzTree();
+    tree.loadFromJson(options);
+    tree.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true;}});
+    ezTreePrototypes.push(tree);
+    return tree;
+  }
+  const groveTree=createEzTree('Oak Large',23399,0xa8d46c,0xd0a873);
+  const avenueTree=createEzTree('Ash Large',36330,0x9bcd68,0xd5b77e);
+  function treeFit(x,z,size) {
+    let fitX=1,fitZ=1;
+    for(const building of buildings) {
+      const clearX=Math.abs(x-building.x)-building.w/2;
+      const clearZ=Math.abs(z-building.z)-building.d/2;
+      if(clearX<size*.62)fitX=Math.min(fitX,clamp((clearX+1.2)/(size*.62),.35,1));
+      if(clearZ<size*.62)fitZ=Math.min(fitZ,clamp((clearZ+1.2)/(size*.62),.35,1));
+    }
+    return {x:fitX,z:fitZ};
+  }
+  function placeEzTree(prototype,x,z,size,angle,spread=1) {
+    const tree=prototype.clone(true),ground=height(x,z),fit=treeFit(x,z,size);
+    const scale=size/45;
+    tree.position.set(x,ground,z);
+    tree.rotation.y=angle;
+    tree.scale.set(scale*fit.x*spread,scale,scale*fit.z*spread);
+    scene.add(tree);
+    return tree;
+  }
+  for(const {distance,lateral} of axisTreeSites) {
+    const point=campusAxis.at(distance,lateral);
+    placeEzTree(groveTree,point.x,point.z,5.8,.32*distance+lateral);
+  }
+  for(const distance of [73,84,94])for(const lateral of [-36,36]) {
+    const point=campusAxis.at(distance,lateral);
+    placeEzTree(groveTree,point.x,point.z,6.1,.22*distance+lateral);
   }
   const treeSites=[];
   const treeCount=420;
@@ -174,34 +221,7 @@ function init(T, PointerLockControls) {
   }
   function plant(x,z) { if(treeAllowed(x,z))treeSites.push({x,z,size:3.7+random()*4.1,angle:random()*Math.PI}); }
   for(let attempts=0;treeSites.length<treeCount && attempts<30000;attempts++)plant(-236+445*random(),-315+630*random());
-
-  const trunks=new T.InstancedMesh(new T.CylinderGeometry(.69,1,1,6),m.bark,treeCount);
-  const broadTreeGeometry=new T.SphereGeometry(1,10,7);
-  const crowns=new T.InstancedMesh(broadTreeGeometry,m.broadLeaves,treeCount);
-  const tips=new T.InstancedMesh(new T.SphereGeometry(1,9,6),m.broadLeaves,treeCount);
-  const treeTints=[0x527e55,0x58845c,0x467453,0x709657,0x59855b].map(c=>new T.Color(c));
-  function instanceTreePart(mesh,i,x,y,z,w,h,angle) {
-    temp.position.set(x,y,z);
-    temp.rotation.set(0,angle,0);
-    temp.scale.set(w,h,w);
-    temp.updateMatrix();
-    mesh.setMatrixAt(i,temp.matrix);
-  }
-  treeSites.forEach(({x,z,size,angle},i)=>{
-    const y=height(x,z);
-    instanceTreePart(trunks,i,x,y+size*.19,z,.14+size*.015,size*.38,angle);
-    instanceTreePart(crowns,i,x,y+size*.51,z,size*.31,size*.30,angle);
-    instanceTreePart(tips,i,x+Math.cos(angle)*.35,y+size*.68,z+Math.sin(angle)*.35,size*.21,size*.20,angle+.32);
-    const tint=treeTints[i%treeTints.length];
-    crowns.setColorAt(i,tint);
-    tips.setColorAt(i,tint);
-  });
-  for(const trees of [trunks,crowns,tips]) {
-    trees.castShadow=trees.receiveShadow=true;
-    trees.instanceMatrix.needsUpdate=true;
-    if(trees.instanceColor) trees.instanceColor.needsUpdate=true;
-    scene.add(trees);
-  }
+  treeSites.forEach(({x,z,size,angle})=>placeEzTree(groveTree,x,z,size,angle));
 
   // 主路两侧采用照片中的法桐式树阵，树干下段刷白、上缘带橙色警示漆。
   // 它们与随机林地分开实例化，既保留远景层次，也能在道路机位形成连续树廊。
@@ -233,46 +253,20 @@ function init(T, PointerLockControls) {
     }
   }
   if(roadTreeSites.length) {
-    const roadTrunks=new T.InstancedMesh(new T.CylinderGeometry(.19,.28,1,10),m.bark,roadTreeSites.length);
-    const whiteBases=new T.InstancedMesh(new T.CylinderGeometry(.21,.26,1,10),m.treeWhite,roadTreeSites.length);
-    const orangeBands=new T.InstancedMesh(new T.CylinderGeometry(.225,.24,1,10),m.treeBand,roadTreeSites.length);
-    const canopyClumps=5,clumpGeometry=new T.SphereGeometry(1,10,7);
-    const broadCanopy=new T.InstancedMesh(clumpGeometry,m.broadLeaves,roadTreeSites.length*canopyClumps);
-    const branchGeometry=new T.CylinderGeometry(.045,.085,1,7),roadBranches=new T.InstancedMesh(branchGeometry,m.bark,roadTreeSites.length*4);
-    const broadTints=[0x4f754f,0x5f8354,0x6f8d59,0x476f4c,0x7b925c].map(c=>new T.Color(c));
-    function instanceBranch(index,from,to,radius) {
-      const vector=new T.Vector3(to.x-from.x,to.y-from.y,to.z-from.z),length=vector.length();
-      temp.position.set((from.x+to.x)/2,(from.y+to.y)/2,(from.z+to.z)/2);
-      temp.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),vector.normalize());
-      temp.scale.set(radius,length,radius);temp.updateMatrix();roadBranches.setMatrixAt(index,temp.matrix);
-    }
-    roadTreeSites.forEach(({x,z,size,angle},i)=>{
-      const ground=height(x,z),mainHeight=size*.54;
-      instanceTreePart(roadTrunks,i,x,ground+mainHeight*.5,z,.16,mainHeight,angle);
-      instanceTreePart(whiteBases,i,x,ground+.57,z,.21,1.13,angle);
-      instanceTreePart(orangeBands,i,x,ground+1.22,z,.225,.19,angle);
-      for(let branch=0;branch<4;branch++){
-        const a=angle+(branch-1.5)*.76,from={x,y:ground+mainHeight*.46,z},to={x:x+Math.cos(a)*1.25,y:ground+size*(.54+.035*branch),z:z+Math.sin(a)*1.25};
-        instanceBranch(i*4+branch,from,to,.055);
-      }
-      for(let clump=0;clump<canopyClumps;clump++){
-        const a=angle+(clump-2)*.73,spread=clump===2?.12:1.18;
-        const k=i*canopyClumps+clump;
-        temp.position.set(x+Math.cos(a)*spread,ground+size*(.59+.047*clump),z+Math.sin(a)*spread);
-        temp.rotation.set(.08*Math.sin(i+clump),a,.06*Math.cos(i-clump));
-        temp.scale.set(size*(clump===2?.31:.245),size*(clump===2?.24:.205),size*(clump===2?.27:.22));
-        temp.updateMatrix();broadCanopy.setMatrixAt(k,temp.matrix);
-        broadCanopy.setColorAt(k,broadTints[(i+clump)%broadTints.length]);
-      }
+    roadTreeSites.forEach(({x,z,size,angle})=>{
+      const ground=height(x,z),tree=placeEzTree(avenueTree,x,z,size,angle,1.24);
+      const fit=treeFit(x,z,size),radius=.25*Math.min(fit.x,fit.z);
+      disc(x,ground,z,radius,.95,m.treeWhite);
+      disc(x,ground+.95,z,radius*1.05,.2,m.treeBand);
+      tree.userData.roadTree=true;
     });
-    for(const trees of [roadTrunks,roadBranches,whiteBases,orangeBands,broadCanopy]) {
-      trees.castShadow=trees.receiveShadow=true;trees.instanceMatrix.needsUpdate=true;
-      if(trees.instanceColor)trees.instanceColor.needsUpdate=true;scene.add(trees);
-    }
   }
 
   // ── 控制 ── 漫游与俯瞰各用一台相机；只有已锁定时才让 WASD 更新玩家。
-  addGatePlanting(T,scene);
+  for(const side of [-1,1]) {
+    const point=campusAxis.at(campusAxis.length-6,side*12);
+    placeEzTree(avenueTree,point.x,point.z,7.2,side*.42,1.18);
+  }
   const controls=new PointerLockControls(walkCam,canvas);
   controls.minPolarAngle=.055;
   controls.maxPolarAngle=Math.PI-.055;
@@ -866,6 +860,7 @@ function init(T, PointerLockControls) {
     const detailArea=nearDisplay?'display':nearGate?'gate':nearColumn?'colonnade':nearMain?'main':false;
     const activeCamera=mode==='orbit'?orbitCam:walkCam;
     const fit=mode==='orbit'?fitDistance():1;
+    for(const tree of ezTreePrototypes)tree.update(now/1000);
     weather.update(elapsed,activeCamera,detailArea,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});
     rendering.render(activeCamera,detailArea);
     requestAnimationFrame(frame);

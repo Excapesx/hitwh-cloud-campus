@@ -4,7 +4,7 @@
 
 ## 直接使用
 
-下载仓库根目录的 **`index.html`**，用支持 WebGL 2 的 Chrome 或 Edge 双击打开。交付文件约 2.7 MB，已包含 Three.js、界面及原始地图，打开时不依赖 CDN 或网络。若设备不支持三维渲染，启动页提供查看原图入口。
+下载仓库根目录的 **`index.html`**，用支持 WebGL 2 的 Chrome 或 Edge 双击打开。交付文件约 6.7 MB，已包含 Three.js、EZ-Tree 树木生成器、树皮与叶片纹理、界面及原始地图，打开时不依赖 CDN 或网络。若设备不支持三维渲染，启动页提供查看原图入口。
 
 ## 本次完善
 
@@ -39,7 +39,7 @@
 
 校训石南侧的展示区按近照加入红色齿轮拱、1985 与 2026 年份底座、HIT 书本和花坛。展示区两侧可步行绕往校训石，红色灯带与年份随昼夜点亮。主楼详情中的「查看校训石前立牌」或 `index.html#display` 可直达近景，其中的「到附近漫游」从立牌南侧开始。细节与验证见 [立牌说明](docs/COMMEMORATIVE-DISPLAY.md)。
 
-道路和树阵参考新增道路实拍细化。主路增加连续路缘、人行带、黄中心线和白边线，法桐式树阵改为多簇宽冠，树干带白色涂干与橙色警示带。详见 [道路与树阵细化](docs/ROADSCAPE-DETAILS.md)。
+道路和树阵参考新增道路实拍细化。主路增加连续路缘、人行带、黄中心线和白边线，行道树替换为 EZ-Tree 的 Ash Large / Oak Large 阔叶预设，带真实树皮、分级枝干和叶片卡片；树干保留白色涂干与橙色警示带。详见 [道路与树阵细化](docs/ROADSCAPE-DETAILS.md)。
 
 ## 开发与构建
 
@@ -69,6 +69,7 @@ npm run dev
 | `assets/campus-map.png` | 用户提供的原图，已写入来源元数据 |
 | `reference/HITWH-Cloud-Campus.original.html` | 用户原雏形，原样保存用于对照 |
 | `LICENSES/three.txt` | Three.js 的 MIT 许可；同时嵌入交付 HTML |
+| `LICENSES/ez-tree.txt` | EZ-Tree 的 MIT 许可；树木生成器与纹理随依赖打包 |
 | `docs/VALIDATION.md` | 本次验证记录与范围 |
 
 ## 精度与素材

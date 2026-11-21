@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { world, height, campusAxis, gateScale, displayLayout } from './campus-data.js';
+import { world, campusAxis, gateScale, displayLayout } from './campus-data.js';
 
 // 世界坐标材质：细部尺度不随几何的 UV 展开或合批而改变；没有外部贴图请求。
 const surfaceGLSL=`
@@ -168,33 +168,4 @@ export function setupRealisticRendering(T,renderer,scene) {
     },
     get quality(){return {detailShadows:Boolean(detailed),detailArea:detailed||null,contactAO:Boolean(detailed&&cssWidth>=700&&supportsAO),shadowMap:sun.shadow.mapSize.x};}
   };
-}
-
-export function addGatePlanting(T,scene) {
-  const sites=[];
-  for(const side of [-1,1])sites.push({...campusAxis.at(campusAxis.length-6,side*12),h:7.2});
-  const foliageGeo=new T.SphereGeometry(1,12,8),p=foliageGeo.attributes.position;
-  for(let i=0;i<p.count;i++) {
-    const x=p.getX(i),y=p.getY(i),z=p.getZ(i),r=1+.11*Math.sin(x*13+y*17+z*11);p.setXYZ(i,x*r,y*r,z*r);
-  }
-  foliageGeo.computeVertexNormals();
-  const leaves=new T.InstancedMesh(foliageGeo,new T.MeshStandardMaterial({color:0xffffff,roughness:1}),sites.length*42);
-  const wood=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,9),new T.MeshStandardMaterial({color:0x665740,roughness:1}),sites.length*37);
-  const temp=new T.Object3D(),tint=new T.Color();let li=0,wi=0;
-  const branch=(a,b,r)=>{const delta=b.clone().sub(a);temp.position.copy(a).add(b).multiplyScalar(.5);temp.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.clone().normalize());temp.scale.set(r,delta.length(),r);temp.updateMatrix();wood.setMatrixAt(wi++,temp.matrix);};
-  sites.forEach((s,tree)=>{
-    const floor=height(s.x,s.z);branch(new T.Vector3(s.x,floor,s.z),new T.Vector3(s.x,floor+s.h*.94,s.z),.26);
-    for(let tier=0;tier<6;tier++) {
-      const y=floor+s.h*(.34+tier*.12),radius=3.1*(1-tier*.135);
-      for(let b=0;b<7;b++) {
-        const a=b*Math.PI*2/7+tier*.47+tree,spread=b===6?.18:1;
-        const x=s.x+Math.cos(a)*radius*spread,z=s.z+Math.sin(a)*radius*spread;
-        if(b<6)branch(new T.Vector3(s.x,y+.1,s.z),new T.Vector3(x,y-.3,z),.045);
-        temp.position.set(x,y,z);temp.rotation.set(.08*Math.sin(a),a,.08*Math.cos(a));temp.scale.set(2.05-tier*.17,.95-tier*.05,1.65-tier*.12);temp.updateMatrix();leaves.setMatrixAt(li,temp.matrix);
-        tint.setHex([0x3c5739,0x466345,0x536f47,0x365440][(tree+tier+b)%4]);leaves.setColorAt(li++,tint);
-      }
-    }
-  });
-  for(const object of [wood,leaves]){object.castShadow=object.receiveShadow=true;object.instanceMatrix.needsUpdate=true;scene.add(object);}
-  leaves.instanceColor.needsUpdate=true;
 }
