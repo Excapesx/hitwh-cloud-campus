@@ -176,16 +176,9 @@ function init(T, PointerLockControls) {
   for(let attempts=0;treeSites.length<treeCount && attempts<30000;attempts++)plant(-236+445*random(),-315+630*random());
 
   const trunks=new T.InstancedMesh(new T.CylinderGeometry(.69,1,1,6),m.bark,treeCount);
-  const cone=new T.ConeGeometry(1,1,14,9);
-  const crownPositions=cone.attributes.position;
-  for(let i=0;i<crownPositions.count;i++) {
-    const x=crownPositions.getX(i),y=crownPositions.getY(i),z=crownPositions.getZ(i),a=Math.atan2(z,x);
-    const fringe=1+.09*Math.sin(y*55+a*7)+.045*Math.cos(a*17-y*12);
-    crownPositions.setXYZ(i,x*fringe,y,z*fringe);
-  }
-  cone.computeVertexNormals();
-  const crowns=new T.InstancedMesh(cone,m.needles,treeCount);
-  const tips=new T.InstancedMesh(cone,m.needles,treeCount);
+  const broadTreeGeometry=new T.SphereGeometry(1,10,7);
+  const crowns=new T.InstancedMesh(broadTreeGeometry,m.broadLeaves,treeCount);
+  const tips=new T.InstancedMesh(new T.SphereGeometry(1,9,6),m.broadLeaves,treeCount);
   const treeTints=[0x527e55,0x58845c,0x467453,0x709657,0x59855b].map(c=>new T.Color(c));
   function instanceTreePart(mesh,i,x,y,z,w,h,angle) {
     temp.position.set(x,y,z);
@@ -197,8 +190,8 @@ function init(T, PointerLockControls) {
   treeSites.forEach(({x,z,size,angle},i)=>{
     const y=height(x,z);
     instanceTreePart(trunks,i,x,y+size*.19,z,.14+size*.015,size*.38,angle);
-    instanceTreePart(crowns,i,x,y+size*.52,z,size*.26,size*.56,angle);
-    instanceTreePart(tips,i,x,y+size*.73,z,size*.203,size*.54,angle+.32);
+    instanceTreePart(crowns,i,x,y+size*.51,z,size*.31,size*.30,angle);
+    instanceTreePart(tips,i,x+Math.cos(angle)*.35,y+size*.68,z+Math.sin(angle)*.35,size*.21,size*.20,angle+.32);
     const tint=treeTints[i%treeTints.length];
     crowns.setColorAt(i,tint);
     tips.setColorAt(i,tint);
@@ -245,21 +238,23 @@ function init(T, PointerLockControls) {
     const orangeBands=new T.InstancedMesh(new T.CylinderGeometry(.225,.24,1,10),m.treeBand,roadTreeSites.length);
     const canopyClumps=5,clumpGeometry=new T.SphereGeometry(1,10,7);
     const broadCanopy=new T.InstancedMesh(clumpGeometry,m.broadLeaves,roadTreeSites.length*canopyClumps);
-    const autumnCanopy=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),m.autumnLeaves,roadTreeSites.length*3);
-    const leafGeometry=new T.IcosahedronGeometry(1,0),leafCount=Math.min(roadTreeSites.length*6,1200);
-    const roadLeaves=new T.InstancedMesh(leafGeometry,m.autumnLeaves,leafCount);
+    const branchGeometry=new T.CylinderGeometry(.045,.085,1,7),roadBranches=new T.InstancedMesh(branchGeometry,m.bark,roadTreeSites.length*4);
     const broadTints=[0x4f754f,0x5f8354,0x6f8d59,0x476f4c,0x7b925c].map(c=>new T.Color(c));
-    const autumnTints=[0xb35c39,0xc77a3f,0x9f6335,0xd09546].map(c=>new T.Color(c));
-    const roadLeafSites=[];
-    for(let i=0;i<roadTreeSites.length;i++)for(let n=0;n<6;n++) {
-      const a=random()*Math.PI*2,dist=1.5+random()*4.6;
-      roadLeafSites.push({x:roadTreeSites[i].x+Math.cos(a)*dist,z:roadTreeSites[i].z+Math.sin(a)*dist,size:.6+random()*.65,angle:random()*Math.PI});
+    function instanceBranch(index,from,to,radius) {
+      const vector=new T.Vector3(to.x-from.x,to.y-from.y,to.z-from.z),length=vector.length();
+      temp.position.set((from.x+to.x)/2,(from.y+to.y)/2,(from.z+to.z)/2);
+      temp.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),vector.normalize());
+      temp.scale.set(radius,length,radius);temp.updateMatrix();roadBranches.setMatrixAt(index,temp.matrix);
     }
     roadTreeSites.forEach(({x,z,size,angle},i)=>{
       const ground=height(x,z),mainHeight=size*.54;
       instanceTreePart(roadTrunks,i,x,ground+mainHeight*.5,z,.16,mainHeight,angle);
       instanceTreePart(whiteBases,i,x,ground+.57,z,.21,1.13,angle);
       instanceTreePart(orangeBands,i,x,ground+1.22,z,.225,.19,angle);
+      for(let branch=0;branch<4;branch++){
+        const a=angle+(branch-1.5)*.76,from={x,y:ground+mainHeight*.46,z},to={x:x+Math.cos(a)*1.25,y:ground+size*(.54+.035*branch),z:z+Math.sin(a)*1.25};
+        instanceBranch(i*4+branch,from,to,.055);
+      }
       for(let clump=0;clump<canopyClumps;clump++){
         const a=angle+(clump-2)*.73,spread=clump===2?.12:1.18;
         const k=i*canopyClumps+clump;
@@ -269,19 +264,8 @@ function init(T, PointerLockControls) {
         temp.updateMatrix();broadCanopy.setMatrixAt(k,temp.matrix);
         broadCanopy.setColorAt(k,broadTints[(i+clump)%broadTints.length]);
       }
-      for(let clump=0;clump<3;clump++){
-        const k=i*3+clump,a=angle+(clump-1)*.85;
-        temp.position.set(x+Math.cos(a)*(.42+clump*.15),ground+size*(.78+clump*.045),z+Math.sin(a)*(.42+clump*.15));
-        temp.rotation.set(.06*clump,a,.05*i);temp.scale.set(size*.17,size*.13,size*.14);temp.updateMatrix();
-        autumnCanopy.setMatrixAt(k,temp.matrix);
-        const autumnAccent=i%4===0||clump===1;
-        autumnCanopy.setColorAt(k,autumnAccent?autumnTints[(i+clump)%autumnTints.length]:broadTints[(i+clump)%broadTints.length]);
-      }
     });
-    roadLeafSites.slice(0,leafCount).forEach(({x,z,size,angle},i)=>{
-      temp.position.set(x,height(x,z)+.08,z);temp.rotation.set(.12,angle,.35);temp.scale.set(size,.08,size*.62);temp.updateMatrix();roadLeaves.setMatrixAt(i,temp.matrix);roadLeaves.setColorAt(i,autumnTints[i%autumnTints.length]);
-    });
-    for(const trees of [roadTrunks,whiteBases,orangeBands,broadCanopy,autumnCanopy,roadLeaves]) {
+    for(const trees of [roadTrunks,roadBranches,whiteBases,orangeBands,broadCanopy]) {
       trees.castShadow=trees.receiveShadow=true;trees.instanceMatrix.needsUpdate=true;
       if(trees.instanceColor)trees.instanceColor.needsUpdate=true;scene.add(trees);
     }
