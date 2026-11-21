@@ -165,6 +165,12 @@ export const contextBuildings=[
   [362,650,50,26,5,'gray'],[397,560,44,24,4,'red'],[1082,900,52,25,6,'cream'],[1132,982,48,25,6,'gray'],
   [1062,1088,44,24,5,'red'],[400,1070,45,24,5,'cream'],[350,1160,48,25,5,'gray']
 ].map(([px,py,w,d,floors,tone])=>({px,py,...world(px,py),w:w*MAP.scale,d:d*MAP.scale,floors,tone}));
+// 校园内部的次要楼群只承担空间填充，保持低层、低对比，避免主轴前场继续显得中空。
+export const interiorFillBuildings=[
+  [365,676,32,20,2,'cream'],[350,868,34,21,2,'red'],[430,1022,32,20,2,'gray'],
+  [470,1188,34,21,2,'cream'],[470,1282,32,20,2,'red'],[930,858,34,21,2,'gray'],
+  [1087,876,34,21,2,'cream'],[1100,1038,34,20,2,'red'],[1048,1180,34,21,2,'cream']
+].map(([px,py,w,d,floors,tone])=>({px,py,...world(px,py),w:w*MAP.scale,d:d*MAP.scale,floors,tone}));
 export const categoryNames={study:'教学科研',life:'生活服务',sport:'运动场地',gate:'校园出入口'};
 function axisLake(name,points) {return {name,smooth:true,points:points.map(([lateral,distance])=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})};}
 // 统一两侧湖区与步道的景观对景；轮廓为航拍估计，不是测绘岸线。

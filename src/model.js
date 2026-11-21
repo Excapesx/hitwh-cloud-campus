@@ -1,4 +1,4 @@
-import { world, outline, inside, height, roadLines, paths, buildings, lakes, contextBuildings } from './campus-data.js';
+import { world, outline, inside, height, roadLines, paths, buildings, lakes, contextBuildings, interiorFillBuildings } from './campus-data.js';
 import { buildSouthGate } from './south-gate.js';
 import { buildMainAxis } from './main-axis.js';
 import { createPhotoBuildingKit, photoBuildings } from './photo-buildings.js';
@@ -239,12 +239,14 @@ export function buildCampus(c) {
       piece(entry,x,y+4,z,alongX?span+2:2,1.2,alongX?2:span+2,m.roof,{footprint:false});
     } else block(entry,x,y,z,w,d,h,floors,material);
   }
-  // 背景楼群只补足边缘的建筑天际线和侧向体量，不进入目录、标注或巡览。
+  // 校园内部补足次要楼群，让主轴两侧的空间有连续的院落层次。
   const contextMats={cream:m.light,gray:m.dorm,red:m.clay};
-  for(const spec of contextBuildings) {
+  function drawAmbientBlock(spec,{edge=false}={}) {
     // 北侧山坡是绿地和山体，不放建筑背景块，避免低角度镜头出现悬浮方体。
-    if(spec.py<500)continue;
-    if(buildings.some(b=>Math.hypot(b.x-spec.x,b.z-spec.z)<Math.max(b.w,b.d,spec.w,spec.d)*.62))continue;
+    if(edge&&spec.py<500)return;
+    const occupied=[...buildings,...interiorFillBuildings,...contextBuildings];
+    if(occupied.some(b=>b!==spec&&Math.hypot(b.x-spec.x,b.z-spec.z)<Math.max(b.w,b.d,spec.w,spec.d)*.62))return;
+    if(!edge&&roads.some(road=>distanceToRoad(spec.x,spec.z,road)<Math.min(spec.w,spec.d)*.45))return;
     const y=height(spec.x,spec.z),h=spec.floors*2.7,mat=contextMats[spec.tone]||m.light;
     box(spec.x,y,spec.z,spec.w,spec.d,h,mat);
     box(spec.x,y+h-.34,spec.z,spec.w+.22,spec.d+.22,.34,m.trim);
@@ -269,6 +271,9 @@ export function buildCampus(c) {
     }
     addCollider(spec.x,y,spec.z,spec.w,h,spec.d);
   }
+  for(const spec of interiorFillBuildings)drawAmbientBlock(spec);
+  // 边缘楼群只补足侧向体量，不进入目录、标注或巡览。
+  for(const spec of contextBuildings)drawAmbientBlock(spec,{edge:true});
   return {field:fieldEntries[0]};
 }
 
