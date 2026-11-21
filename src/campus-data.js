@@ -169,7 +169,14 @@ export const contextBuildings=[
 export const interiorFillBuildings=[
   [365,676,32,20,2,'cream'],[350,868,34,21,2,'red'],[430,1022,32,20,2,'gray'],
   [470,1188,34,21,2,'cream'],[470,1282,32,20,2,'red'],[930,858,34,21,2,'gray'],
-  [1087,876,34,21,2,'cream'],[1100,1038,34,20,2,'red'],[1048,1180,34,21,2,'cream']
+  [1087,876,34,21,2,'cream'],[1100,1038,34,20,2,'red'],[1048,1180,34,21,2,'cream'],
+  [420,530,28,18,2,'gray'],[470,548,30,18,2,'cream'],[515,590,28,18,2,'red'],
+  [420,640,28,18,2,'cream'],[460,690,30,18,2,'gray'],[372,790,28,18,2,'red'],
+  [438,820,30,18,2,'cream'],[490,880,28,18,2,'gray'],[1010,540,30,18,2,'cream'],
+  [1060,565,28,18,2,'red'],[1110,620,30,18,2,'gray'],[1040,700,28,18,2,'cream'],
+  [1120,760,30,18,2,'red'],[1080,830,28,18,2,'gray'],[1005,930,30,18,2,'cream'],
+  [1030,1000,28,18,2,'red'],[1090,1080,30,18,2,'gray'],[500,1100,28,18,2,'cream'],
+  [470,1240,30,18,2,'gray']
 ].map(([px,py,w,d,floors,tone])=>({px,py,...world(px,py),w:w*MAP.scale,d:d*MAP.scale,floors,tone}));
 export const categoryNames={study:'教学科研',life:'生活服务',sport:'运动场地',gate:'校园出入口'};
 function axisLake(name,points) {return {name,smooth:true,points:points.map(([lateral,distance])=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})};}
