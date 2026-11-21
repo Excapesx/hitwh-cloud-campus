@@ -158,26 +158,6 @@ export const buildings = [
 for(const [i,x,y] of [[18,364,1383],[16,418,1389],[17,483,1395],[14,552,1402],[20,625,1409],[19,359,1427],[21,412,1432],[13,551,1437],[12,549,1466],[15,542,1502],[11,613,1496],[10,682,1502]]) {
   buildings.push({id:'family'+i,name:'林苑家属区 '+i+'号楼',kind:'life',px:x,py:y,...world(x,y),w:47*.45,d:15*.45,floors:4,shape:'block',minor:true});
 }
-// 地图边缘可见但未列入目录的背景楼群。它们只用于填补低角度镜头的城市界面。
-export const contextBuildings=[
-  [470,245,52,25,4,'cream'],[430,310,48,24,5,'gray'],[476,392,46,25,4,'red'],[408,462,44,24,4,'cream'],
-  [1008,253,50,26,5,'gray'],[1080,313,46,24,5,'cream'],[1130,421,52,27,5,'red'],[1158,534,46,25,5,'cream'],
-  [362,650,50,26,5,'gray'],[397,560,44,24,4,'red'],[1082,900,52,25,6,'cream'],[1132,982,48,25,6,'gray'],
-  [1062,1088,44,24,5,'red'],[400,1070,45,24,5,'cream'],[350,1160,48,25,5,'gray']
-].map(([px,py,w,d,floors,tone])=>({px,py,...world(px,py),w:w*MAP.scale,d:d*MAP.scale,floors,tone}));
-// 校园内部的次要楼群只承担空间填充，保持低层、低对比，避免主轴前场继续显得中空。
-export const interiorFillBuildings=[
-  [365,676,32,20,2,'cream'],[350,868,34,21,2,'red'],[430,1022,32,20,2,'gray'],
-  [470,1188,34,21,2,'cream'],[470,1282,32,20,2,'red'],[930,858,34,21,2,'gray'],
-  [1087,876,34,21,2,'cream'],[1100,1038,34,20,2,'red'],[1048,1180,34,21,2,'cream'],
-  [420,530,28,18,2,'gray'],[470,548,30,18,2,'cream'],[515,590,28,18,2,'red'],
-  [420,640,28,18,2,'cream'],[460,690,30,18,2,'gray'],[372,790,28,18,2,'red'],
-  [438,820,30,18,2,'cream'],[490,880,28,18,2,'gray'],[1010,540,30,18,2,'cream'],
-  [1060,565,28,18,2,'red'],[1110,620,30,18,2,'gray'],[1040,700,28,18,2,'cream'],
-  [1120,760,30,18,2,'red'],[1080,830,28,18,2,'gray'],[1005,930,30,18,2,'cream'],
-  [1030,1000,28,18,2,'red'],[1090,1080,30,18,2,'gray'],[500,1100,28,18,2,'cream'],
-  [470,1240,30,18,2,'gray']
-].map(([px,py,w,d,floors,tone])=>({px,py,...world(px,py),w:w*MAP.scale,d:d*MAP.scale,floors,tone}));
 export const categoryNames={study:'教学科研',life:'生活服务',sport:'运动场地',gate:'校园出入口'};
 function axisLake(name,points) {return {name,smooth:true,points:points.map(([lateral,distance])=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];})};}
 // 统一两侧湖区与步道的景观对景；轮廓为航拍估计，不是测绘岸线。
