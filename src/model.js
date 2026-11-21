@@ -23,9 +23,21 @@ export function buildTerrain({T,mesh,box,m}) {
   }
   geo.setIndex(indices); geo.setAttribute('color',new T.BufferAttribute(colors,3)); geo.computeVertexNormals();
   mesh(geo,m.terrain,0,.02,0,false);
+  // 轮廓边缘补一圈连续的地形立面，低机位不会看到绿色地形板悬在底面上。
+  const skirtBottom=-6.15,skirtPositions=[],skirtIndices=[];
+  for(let i=0;i<outline.length;i++) {
+    const a=outline[i],b=outline[(i+1)%outline.length],ai=skirtPositions.length/3;
+    skirtPositions.push(a.x,height(a.x,a.z)+.015,a.z,b.x,height(b.x,b.z)+.015,b.z,
+      b.x,skirtBottom,b.z,a.x,skirtBottom,a.z);
+    skirtIndices.push(ai,ai+1,ai+2,ai,ai+2,ai+3);
+  }
+  const skirtGeo=new T.BufferGeometry();
+  skirtGeo.setAttribute('position',new T.Float32BufferAttribute(skirtPositions,3));
+  skirtGeo.setIndex(skirtIndices);skirtGeo.computeVertexNormals();
+  mesh(skirtGeo,m.deepGrass,0,0,0,false);
   // 海面在图面西侧；没有经纬度与测绘基准，不用场景尺寸推算距离。
   const outside=new T.PlaneGeometry(3000,3000);outside.rotateX(-Math.PI/2);
-  mesh(outside,new T.MeshStandardMaterial({color:0xc8d0b9,roughness:1}),0,-5.5,0,false);
+  mesh(outside,new T.MeshStandardMaterial({color:0xc8d0b9,roughness:1}),0,skirtBottom-.02,0,false);
   const coastPixels=[[56,-250],[56,143],[112,173],[173,231],[200,305],[218,372],[252,401],[230,474],[218,549],[208,640],[148,724],[80,810],[-15,936],[-300,1400],[-600,2100]];
   const curve=new T.SplineCurve(coastPixels.map(([x,y])=>{const p=world(x,y);return new T.Vector2(p.x,-p.z);}));
   const coast=curve.getPoints(160),sea=new T.Shape();
