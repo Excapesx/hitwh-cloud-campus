@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { buildings,inside,walkable,world,roadLines,tourIds,campusAxis,gateScale,gatePoint,axisTreeSites,lakes,axisLayout,colonnadeLayout,colonnadePoint,displayLayout } from '../src/campus-data.js';
+import { buildings,inside,walkable,world,height,roadLines,tourIds,campusAxis,gateScale,gatePoint,axisTreeSites,lakes,axisLayout,colonnadeLayout,colonnadePoint,displayLayout } from '../src/campus-data.js';
 import { southGateSolids } from '../src/south-gate.js';
 import { mainBuildingSolids } from '../src/main-axis.js';
 import { normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from '../src/weather-state.js';
@@ -11,6 +11,22 @@ for(const r of roadLines)for(const point of r.points)assert(point.length===2&&po
 const main=buildings.find(b=>b.id==='main'),library=buildings.find(b=>b.id==='library'),stadium=buildings.find(b=>b.id==='stadium');
 assert(library.z<main.z&&stadium.x<main.x&&stadium.z>main.z,'Reference-map spatial relationships changed');
 assert(inside(world(841,1484).x,world(841,1484).z),'Walk spawn outside campus');
+const groundAt=(px,pz)=>{const p=world(px,pz);return height(p.x,p.z);};
+const stadiumGround=groundAt(stadium.px,stadium.py),mainGround=groundAt(main.px,main.py),libraryGround=groundAt(library.px,library.py);
+assert(stadiumGround<.2&&mainGround<.6,'Stadium and main forecourt should stay on the low southern terrace');
+assert(libraryGround>mainGround+10,'The route to the library must climb behind the main building');
+for(const id of ['d12','d13A','d13B','d14A','d14B','d14C']) {
+  const b=buildings.find(item=>item.id===id);
+  assert(groundAt(b.px,b.py)>mainGround+3,'High dormitory is missing the rear hillside: '+id);
+}
+let previous=-Infinity;
+for(let i=0;i<=24;i++) {
+  const t=i/24,x=stadium.x+(library.x-stadium.x)*t,z=stadium.z+(library.z-stadium.z)*t;
+  const current=height(x,z);
+  assert(Number.isFinite(current),'Terrain height is not finite along stadium-library route');
+  assert(current>=previous-.55,'Stadium-library route has an unexpected downhill break');
+  previous=current;
+}
 const gate=buildings.find(b=>b.id==='doorSouth');
 const end=campusAxis.at(campusAxis.length);
 assert(Math.hypot(end.x-gate.x,end.z-gate.z)<1e-8,'Main axis must terminate at south gate');

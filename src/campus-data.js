@@ -11,7 +11,9 @@ export function colonnadePoint(angle,offset=0) {const r=colonnadeLayout.radius+o
 export const campusAxis=(()=>{
   const origin=world(879,1141),end=world(841,1510),length=Math.hypot(end.x-origin.x,end.z-origin.z);
   const front={x:(end.x-origin.x)/length,z:(end.z-origin.z)/length},right={x:front.z,z:-front.x};
-  return {origin,end,length,front,right,yaw:Math.atan2(front.x,front.z),colonnade:58,motto:111,
+  // 参考正面航拍图重新校准中轴线节点。主楼前场、柱廊、校训石、纪念立牌和南门
+  // 按现场由北向南的视觉节奏排列，避免校训石与纪念立牌挤在同一段中。
+  return {origin,end,length,front,right,yaw:Math.atan2(front.x,front.z),colonnade:52,motto:88,
     at(distance,lateral=0){return {x:origin.x+front.x*distance+right.x*lateral,z:origin.z+front.z*distance+right.z*lateral};},
     project(x,z){const dx=x-origin.x,dz=z-origin.z;return {distance:dx*front.x+dz*front.z,lateral:dx*right.x+dz*right.z};}
   };
@@ -19,9 +21,9 @@ export const campusAxis=(()=>{
 // 门体、灯具与临街铺装共用中轴朝向，避免主楼共线而南门仍沿世界 Z 轴。
 export const gatePoint=(x,z)=>campusAxis.at(campusAxis.length+z,x);
 const axisPixel=(distance,lateral=0)=>{const p=campusAxis.at(distance,lateral);return [p.x/MAP.scale+MAP.originX,p.z/MAP.scale+MAP.originY];};
-export const axisLayout={promenadeWidth:5.8,avenueWidth:8,plazaX:10,plazaZ:8,treeRows:[8.6,16.8]};
+export const axisLayout={promenadeWidth:7.2,avenueWidth:8,plazaX:10,plazaZ:8,treeRows:[8.6,16.8]};
 // 新照片：纪念立牌位于校训石南侧的独立展示区，面朝南门。
-export const displayLayout={distance:123,width:9.8,depth:2.6,plazaWidth:24,plazaEnd:128};
+export const displayLayout={distance:126,width:11.2,depth:3,plazaWidth:18,plazaEnd:130};
 export const axisTreeSites=[97,105,113,121,137,145,153].flatMap(distance=>axisLayout.treeRows.flatMap(lateral=>
   lateral<10&&Math.abs(distance-campusAxis.motto)<12?[]:[-1,1].map(side=>({distance,lateral:side*lateral}))));
 export const outlinePixels = [[185,740],[224,685],[333,613],[436,590],[490,500],[515,352],[517,235],[535,187],[606,146],[662,147],[711,183],[760,207],[846,196],[904,228],[972,274],[1009,325],[1031,410],[1081,493],[1128,568],[1157,652],[1160,726],[1132,799],[1099,866],[1087,962],[1103,1090],[1135,1230],[1153,1394],[1187,1558],[1094,1558],[997,1540],[892,1524],[858,1507],[825,1507],[786,1533],[672,1525],[572,1516],[478,1508],[478,1467],[407,1459],[319,1469],[332,1331],[286,1261],[312,1210],[383,1149],[441,1092],[475,1005],[466,929],[448,894],[405,889],[363,925],[331,920],[280,884],[270,834],[277,783]];
@@ -40,11 +42,27 @@ export function walkable(x,z) {
   return inside(x,z)||(Math.abs(p.lateral)<16*gateScale && zGate>-13*gateScale && zGate<29.5*gateScale);
 }
 export function height(x,z) {
-  const p=world(828,306);
-  const hill=58*Math.exp(-(((x-p.x)/81)**2+((z-p.z)/62)**2));
-  // 校园北侧山体；图书馆及其以南楼址保持平坦。
-  const north=Taper((-z-195)/30);
-  return hill*north;
+  // 运动场所在的南侧台地保持水平，主楼后方开始向图书馆方向连续抬升。
+  // 这条缓坡是校园照片中从运动场、主楼后侧到图书馆的共同地形基线。
+  const rearSlope=29.5*Taper((116-z)/292);
+
+  // 学子餐厅背后的草坡形成多道柔和起伏与浅谷；将其限制在主坡东侧，
+  // 既能在食堂后方与红砖步道处看到明显丘陵变化，又不破坏运动场→图书馆的连续上坡。
+  const eastMask=Taper((x-4)/38);
+  const xueziHill=9.5*eastMask*Math.exp(-(((x-44)/58)**2+((z+44)/46)**2));
+  const hillRidges=4.6*eastMask*Math.sin((x-16)*.095)*Math.cos((z+34)*.085)
+    *Math.exp(-(((x-42)/56)**2+((z+44)/48)**2));
+  const hillSwale=3.8*eastMask*Math.sin((z+40)*.13+Math.sin(x*.05))
+    *Math.exp(-(((x-38)/52)**2+((z+40)/44)**2));
+
+  // 12–14 号公寓坐落在东侧山肩高地上，整组宿舍明显高于学子餐厅与中区球场。
+  const dormRidge=14.2*Taper((x-66)/42)*Taper((52-z)/44)*Taper((z+185)/55);
+
+  // 场地最北侧仍保留照片所示的自然山体，与连续缓坡平顺衔接。
+  const northPoint=world(828,306);
+  const northHill=62*Math.exp(-(((x-northPoint.x)/81)**2+((z-northPoint.z)/62)**2));
+  const northEdge=Taper((-z-205)/32);
+  return Math.max(0,rearSlope+xueziHill+hillRidges+hillSwale+dormRidge,northHill*northEdge);
 }
 function Taper(t) { t=Math.min(1,Math.max(0,t)); return t*t*(3-2*t); }
 export const roadLines = [
@@ -85,7 +103,7 @@ export const buildings = [
  ['library','图书馆','study',710,476,82,103,5,'library'],
  ['wanghai','望海楼','study',584,377,59,53,5],
  ['boB','博学楼B','study',720,1084,67,48,5],
- ['zhi','大学生创新创业基地','study',548,590,106,24,3],
+ ['zhi','大学生创新创业基地','study',582,575,17,22,2],
  ['activity','大学生活动中心','study',683,591,55,60,3],
  ['gym','综合球类馆','sport',760,590,66,44,2],
  ['stadium','体育场','sport',612,1280,139,187,1,'stadium'],
@@ -110,11 +128,12 @@ export const buildings = [
  ['d10','10公寓（拾海楼）','life',491,767,54,49,6],
  ['d11','11公寓（瞰海楼）','life',412,757,57,54,6],
  ['d12','12公寓（渤海楼）','life',965,800,67,60,6,'courtyard'],
- ['d13A','13A公寓','life',1039,839,54,25,6],
- ['d13B','13B公寓','life',1055,798,54,26,6],
- ['d14A','14A公寓','life',1085,712,55,22,6],
- ['d14B','14B公寓','life',1078,655,54,23,6],
- ['d14C','14C公寓','life',1061,597,53,24,6],
+ ['d13A','13A公寓','life',1039,839,54,25,13],
+ ['d13B','13B公寓','life',1055,798,54,26,13],
+ // 14号公寓的层次按基建处航拍估计，保留原图的三栋相对位置。
+ ['d14A','14A公寓','life',1085,712,55,22,12],
+ ['d14B','14B公寓','life',1078,655,54,23,12],
+ ['d14C','14C公寓','life',1061,597,53,24,12],
  ['international','留学生公寓','life',979,651,54,25,5],
  ['tianyayuan','天雅苑','life',978,696,56,23,3],
  ['tianyaxuan','天雅轩','life',977,731,55,22,3],

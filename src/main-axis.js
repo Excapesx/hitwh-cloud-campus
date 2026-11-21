@@ -108,6 +108,16 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
     const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
     return new T.MeshStandardMaterial({map:texture,transparent:!background,alphaTest:.02,roughness:.88,polygonOffset:true,polygonOffsetFactor:-1});
   }
+  function mottoSign(w,h) {
+    const canvas=document.createElement('canvas');canvas.width=4096;canvas.height=Math.round(4096*h/w);
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#a52d27';ctx.font=`600 ${Math.round(canvas.height*.72)}px "STKaiti","KaiTi","FZKai-Z03","楷体",serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='rgba(86,28,22,.35)';ctx.shadowOffsetX=2;ctx.shadowOffsetY=3;ctx.shadowBlur=2;
+    ctx.strokeStyle='#8f2723';ctx.lineWidth=2.5;ctx.strokeText('规格严格  功夫到家',canvas.width/2,canvas.height*.53,3800);
+    ctx.fillText('规格严格  功夫到家',canvas.width/2,canvas.height*.53,3800);ctx.shadowColor='transparent';
+    const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
+    return new T.MeshStandardMaterial({map:texture,transparent:true,alphaTest:.02,roughness:.88,polygonOffset:true,polygonOffsetFactor:-1});
+  }
 
   // 主体：浅色平屋面，横向主翼在后、两侧翼向南延伸。
   for(const s of bodySolids) {
@@ -127,6 +137,14 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
     for(let i=0;i<8;i++)lunette(side*7.2+side*i*2.0,.85,-.31,1.5,1.4);
     for(let i=0;i<9;i++)block(side*(7.1+i*2.17),16,-.21,.13,2.4,.24,trim);
   }
+  // 照片 02 可见西配楼端部的通高玻璃入口与逐层水平分隔。
+  const westEntrance=-26.3;
+  block(westEntrance,.22,21.08,2.75,9.35,.29,recess);
+  block(westEntrance,.39,21.254,2.36,8.93,.06,glass);
+  for(const dx of [-1.22,0,1.22])block(westEntrance+dx,.36,21.33,.12,9.02,.1,trim);
+  for(const y of [2.67,5.1,7.37,9.39])block(westEntrance,y,21.39,2.64,.14,.23,trim);
+  block(westEntrance,2.62,21.73,3.6,.22,1.63,trim);
+  for(let i=0;i<4;i++)block(westEntrance,.057*i,22.86-i*.25,3.7,.12,.9,granite,false);
   facade(0,2.57,10.1,7,5,19.5);
   facade(0,-9.58,50,7,24,17.5);
   // 主楼中央巨柱、三角山花、入口雨棚与校名。
@@ -212,8 +230,21 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   ellipse(campusAxis.motto,axisLayout.plazaX-.3,axisLayout.plazaZ-.3,granite,.365);
   // 校训石南面另外留出纪念立牌的展示前场，和原椭圆广场相连。
   const displayPaving=surfaceMaterial(T,'paving',{color:0xc5ad91,roughness:.86});
-  block(0,.325,displayLayout.plazaEnd-5,displayLayout.plazaWidth,.035,10,displayPaving,false,false);
-  for(const side of [-1,1])block(side*(displayLayout.plazaWidth/2-.13),.365,displayLayout.plazaEnd-5,.22,.025,10,trim,false,false);
+  block(0,.325,displayLayout.distance,displayLayout.plazaWidth,.035,7,displayPaving,false,false);
+  const gardenStart=campusAxis.motto+axisLayout.plazaZ-.9,gardenEnd=displayLayout.distance-3.4;
+  if(gardenEnd>gardenStart){
+    const routeWidth=axisLayout.promenadeWidth*.8;
+    block(0,.326,(gardenStart+gardenEnd)/2,routeWidth,.027,gardenEnd-gardenStart,granite,false,false);
+  }
+  for(const side of [-1,1]) {
+    block(side*(displayLayout.plazaWidth/2-.12),.365,displayLayout.distance,.18,.025,7,trim,false,false);
+    ribbon([
+      [side*8.2,displayLayout.distance-.2],
+      [side*11.2,displayLayout.distance-4.2],
+      [side*14.6,displayLayout.distance-8.8],
+      [side*17.2,displayLayout.distance-13.5]
+    ],.82,granite,.37);
+  }
   // 广场保持连续石材，只用细窄椭圆嵌条围合石体，避免黑色车道
   // 再次横截中央步道。车行大道在广场南侧收口。
   ribbon(Array.from({length:48},(_,i)=>{const a=i/48*Math.PI*2;return [Math.sin(a)*8.6,campusAxis.motto+Math.cos(a)*6.6];}),.18,edging,.385,true);
@@ -236,7 +267,7 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   const profile=new T.Shape();profile.moveTo(-4.7,.1);profile.bezierCurveTo(-5.15,.7,-4.6,1.48,-3.55,1.67);profile.bezierCurveTo(-1.4,2.05,2.9,1.95,4.45,1.48);profile.bezierCurveTo(4.9,1.05,4.7,.4,4.3,.1);profile.closePath();
   const stoneGeo=new T.ExtrudeGeometry(profile,{depth:1.35,bevelEnabled:true,bevelSize:.18,bevelThickness:.17,bevelSegments:3,curveSegments:24});
   stoneGeo.scale(.52,.72,.62);stoneGeo.translate(0,.47,campusAxis.motto-.4);emit(stoneGeo,rock,true,false);worldSolid(0,.43,campusAxis.motto,5.2,1.7,1.5);
-  const motto=new T.PlaneGeometry(4.3,.83);motto.translate(0,1.15,campusAxis.motto+.55);emit(motto,sign('规格严格  功夫到家',4.3,.83,'#963e26'),false,false);
+  const motto=new T.PlaneGeometry(4.5,.84);motto.translate(0,1.12,campusAxis.motto+.55);emit(motto,mottoSign(4.5,.84),false,false);
   buildCommemorativeDisplay({T,emit,block,worldSolid,trim});
 
   for(const {material,cast,selectable,parts} of buckets.values()) {

@@ -5,6 +5,7 @@ import { outline, inside, walkable, height, world, buildings, categoryNames, tou
 import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
 import { setupRealisticRendering, surfaceMaterial, addGatePlanting } from './realism.js';
 import { createWeatherSystem } from './weather.js';
+import { photoBuildings } from './photo-buildings.js';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
  console.error(error);el('boot').textContent='三维场景未能启动。请用支持 WebGL 2 的 Chrome 或 Edge 打开；也可以查看原始地图。';
@@ -31,14 +32,18 @@ function init(T, PointerLockControls) {
   const mat = (color, options) => new T.MeshStandardMaterial({ color, roughness:.87, ...options });
   const m = {
     terrain:mat(0xffffff,{ vertexColors:true }), asphalt:mat(0x505c5a), curb:mat(0xa8b3a0),
+    roadYellow:mat(0xe5b83f,{roughness:.62}), roadWhite:mat(0xe8e5d8,{roughness:.74}),
     path:mat(0xe4dac2), stone:mat(0xece0c8), line:mat(0xe9ead6), grass:mat(0x799b61),
     deepGrass:mat(0x638752), water:mat(0x65a7b3,{ roughness:.53 }), wall:mat(0xe5cda8),
     light:mat(0xf2e3c4), dorm:mat(0xdcc3a8), clay:mat(0xbe896f), dark:mat(0x394b53),
     roof:mat(0x3c5054), trim:mat(0xa9b7b0), blue:mat(0x78959b),
     windows:mat(0x416873,{ roughness:.41, metalness:.12 }),
     glass:mat(0x79b9c4,{ transparent:true, opacity:.54, roughness:.23, metalness:.12, depthWrite:false }),
-    track:mat(0xa65d49), brass:mat(0xe3ca8f,{ metalness:.2 }), bark:mat(0x745e48),
-    needles:mat(0xffffff,{ roughness:1 })
+    track:mat(0xa65d49), seatRed:mat(0xb34f43,{roughness:.82}), seatTeal:mat(0x4f9c98,{roughness:.78}), seatAmber:mat(0x9b704c,{roughness:.86}),
+    steel:mat(0xc7cbc4,{roughness:.48,metalness:.58}),
+    brass:mat(0xe3ca8f,{ metalness:.2 }), bark:mat(0x745e48),
+    treeWhite:mat(0xe7e4d8,{roughness:.94}), treeBand:mat(0xd88742,{roughness:.88}),
+    broadLeaves:mat(0x6f8d54,{roughness:1}), autumnLeaves:mat(0xb36b3f,{roughness:1}), needles:mat(0xffffff,{ roughness:1 })
   };
   m.wall=surfaceMaterial(T,'plaster',{color:0xe5cda8,roughness:.9});
   m.light=surfaceMaterial(T,'stone',{color:0xf2e3c4,roughness:.8});
@@ -205,6 +210,83 @@ function init(T, PointerLockControls) {
     scene.add(trees);
   }
 
+  // 主路两侧采用照片中的法桐式树阵，树干下段刷白、上缘带橙色警示漆。
+  // 它们与随机林地分开实例化，既保留远景层次，也能在道路机位形成连续树廊。
+  const roadTreeSites=[];
+  const treeRows=new Set(['环山路','西侧道路','学子路','生活区道路','东侧道路','主楼东路','体育场西路','体育场东路','体育场南路','南门道路']);
+  const lakeBounds=lakes.map(l=>{
+    const points=l.points.map(p=>world(...p));
+    return {minX:Math.min(...points.map(p=>p.x))-2,maxX:Math.max(...points.map(p=>p.x))+2,minZ:Math.min(...points.map(p=>p.z))-2,maxZ:Math.max(...points.map(p=>p.z))+2};
+  });
+  function roadTreeAllowed(x,z) {
+    if(!inside(x,z))return false;
+    if(buildings.some(b=>Math.abs(x-b.x)<b.w/2+3.6&&Math.abs(z-b.z)<b.d/2+3.6))return false;
+    if(lakeBounds.some(b=>x>b.minX&&x<b.maxX&&z>b.minZ&&z<b.maxZ))return false;
+    return roadTreeSites.every(p=>(p.x-x)**2+(p.z-z)**2>36);
+  }
+  for(const line of roadLines) {
+    if(!treeRows.has(line.name))continue;
+    const points=line.points.map(p=>world(...p));
+    for(let i=1;i<points.length;i++) {
+      const a=points[i-1],b=points[i],dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz),steps=Math.max(1,Math.ceil(length/10.8));
+      const nx=-dz/length,nz=dx/length,offset=line.width/2+2.25;
+      for(let step=0;step<=steps;step++) {
+        const t=step/steps,center={x:a.x+dx*t,z:a.z+dz*t};
+        for(const side of [-1,1]) {
+          const x=center.x+nx*offset*side,z=center.z+nz*offset*side;
+          if(roadTreeAllowed(x,z))roadTreeSites.push({x,z,size:4.8+random()*1.5,angle:random()*Math.PI});
+        }
+      }
+    }
+  }
+  if(roadTreeSites.length) {
+    const roadTrunks=new T.InstancedMesh(new T.CylinderGeometry(.19,.28,1,10),m.bark,roadTreeSites.length);
+    const whiteBases=new T.InstancedMesh(new T.CylinderGeometry(.21,.26,1,10),m.treeWhite,roadTreeSites.length);
+    const orangeBands=new T.InstancedMesh(new T.CylinderGeometry(.225,.24,1,10),m.treeBand,roadTreeSites.length);
+    const canopyClumps=5,clumpGeometry=new T.SphereGeometry(1,10,7);
+    const broadCanopy=new T.InstancedMesh(clumpGeometry,m.broadLeaves,roadTreeSites.length*canopyClumps);
+    const autumnCanopy=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),m.autumnLeaves,roadTreeSites.length*3);
+    const leafGeometry=new T.IcosahedronGeometry(1,0),leafCount=Math.min(roadTreeSites.length*6,1200);
+    const roadLeaves=new T.InstancedMesh(leafGeometry,m.autumnLeaves,leafCount);
+    const broadTints=[0x4f754f,0x5f8354,0x6f8d59,0x476f4c,0x7b925c].map(c=>new T.Color(c));
+    const autumnTints=[0xb35c39,0xc77a3f,0x9f6335,0xd09546].map(c=>new T.Color(c));
+    const roadLeafSites=[];
+    for(let i=0;i<roadTreeSites.length;i++)for(let n=0;n<6;n++) {
+      const a=random()*Math.PI*2,dist=1.5+random()*4.6;
+      roadLeafSites.push({x:roadTreeSites[i].x+Math.cos(a)*dist,z:roadTreeSites[i].z+Math.sin(a)*dist,size:.6+random()*.65,angle:random()*Math.PI});
+    }
+    roadTreeSites.forEach(({x,z,size,angle},i)=>{
+      const ground=height(x,z),mainHeight=size*.54;
+      instanceTreePart(roadTrunks,i,x,ground+mainHeight*.5,z,.16,mainHeight,angle);
+      instanceTreePart(whiteBases,i,x,ground+.57,z,.21,1.13,angle);
+      instanceTreePart(orangeBands,i,x,ground+1.22,z,.225,.19,angle);
+      for(let clump=0;clump<canopyClumps;clump++){
+        const a=angle+(clump-2)*.73,spread=clump===2?.12:1.18;
+        const k=i*canopyClumps+clump;
+        temp.position.set(x+Math.cos(a)*spread,ground+size*(.59+.047*clump),z+Math.sin(a)*spread);
+        temp.rotation.set(.08*Math.sin(i+clump),a,.06*Math.cos(i-clump));
+        temp.scale.set(size*(clump===2?.31:.245),size*(clump===2?.24:.205),size*(clump===2?.27:.22));
+        temp.updateMatrix();broadCanopy.setMatrixAt(k,temp.matrix);
+        broadCanopy.setColorAt(k,broadTints[(i+clump)%broadTints.length]);
+      }
+      for(let clump=0;clump<3;clump++){
+        const k=i*3+clump,a=angle+(clump-1)*.85;
+        temp.position.set(x+Math.cos(a)*(.42+clump*.15),ground+size*(.78+clump*.045),z+Math.sin(a)*(.42+clump*.15));
+        temp.rotation.set(.06*clump,a,.05*i);temp.scale.set(size*.17,size*.13,size*.14);temp.updateMatrix();
+        autumnCanopy.setMatrixAt(k,temp.matrix);
+        const autumnAccent=i%4===0||clump===1;
+        autumnCanopy.setColorAt(k,autumnAccent?autumnTints[(i+clump)%autumnTints.length]:broadTints[(i+clump)%broadTints.length]);
+      }
+    });
+    roadLeafSites.slice(0,leafCount).forEach(({x,z,size,angle},i)=>{
+      temp.position.set(x,height(x,z)+.08,z);temp.rotation.set(.12,angle,.35);temp.scale.set(size,.08,size*.62);temp.updateMatrix();roadLeaves.setMatrixAt(i,temp.matrix);roadLeaves.setColorAt(i,autumnTints[i%autumnTints.length]);
+    });
+    for(const trees of [roadTrunks,whiteBases,orangeBands,broadCanopy,autumnCanopy,roadLeaves]) {
+      trees.castShadow=trees.receiveShadow=true;trees.instanceMatrix.needsUpdate=true;
+      if(trees.instanceColor)trees.instanceColor.needsUpdate=true;scene.add(trees);
+    }
+  }
+
   // ── 控制 ── 漫游与俯瞰各用一台相机；只有已锁定时才让 WASD 更新玩家。
   addGatePlanting(T,scene);
   const controls=new PointerLockControls(walkCam,canvas);
@@ -336,7 +418,12 @@ function init(T, PointerLockControls) {
   for(const type of ['pointerup','pointercancel','lostpointercapture']) canvas.addEventListener(type,event=>{
     if(event.pointerId===dragId) cancelDrag();
   });
-  function zoomBy(factor) { targetRadius=clamp(targetRadius*factor,selected?.id==='doorSouth'?12:['colonnade','display'].includes(detailFocus)?10:selected?.id==='main'?45:95,1200); }
+  function zoomBy(factor) {
+    const photo=photoBuildings[selected?.id];
+    const photoMin=photo?Math.max(15,Math.max(selected.spec.w,selected.spec.d)*.55):95;
+    const min=selected?.id==='doorSouth'?12:['colonnade','display'].includes(detailFocus)?10:selected?.id==='main'?45:photoMin;
+    targetRadius=clamp(targetRadius*factor,min,1200);
+  }
   canvas.addEventListener('wheel',event=>{
     if(mode!=='orbit' || !started) return;
     event.preventDefault();
@@ -549,17 +636,62 @@ function init(T, PointerLockControls) {
     }
     el('resultCount').textContent=matches.length+' 处地点';el('empty').hidden=matches.length>0;
   }
+  function focusPhotoEntry(entry,photo) {
+    const {w,d}=entry.spec;
+    const ground=height(entry.x,entry.z),buildingHeight=entry.top-ground;
+    const tall=buildingHeight>Math.max(w,d);
+    const radius=Math.max(42,Math.max(w,d)*1.8,buildingHeight*1.94);
+    targetGoal.set(entry.x,ground+buildingHeight*(tall?.49:.44),entry.z);
+    targetRadius=radius;
+    const aspect=innerWidth/Math.max(1,innerHeight);
+    const fit=Math.max(1,.78/aspect);
+    const eye=new T.Vector3(),aim=new T.Vector3(),ray=new T.Ray(),hit=new T.Vector3();
+    const boxByPlace=landmarks.filter(e=>e!==entry&&e.kind!=='sport').flatMap(e=>
+      e.faces.map(f=>new T.Box3(
+        new T.Vector3(f.x-f.w/2-.12,height(f.x,f.z),f.z-f.d/2-.12),
+        new T.Vector3(f.x+f.w/2+.12,f.top??e.top,f.z+f.d/2+.12)
+      ))
+    );
+    const crosswise=Math.abs(Math.sin(photo.yaw))>.5;
+    const faceDepth=(crosswise?w:d)*.45,faceWidth=crosswise?d:w;
+    const sin=Math.sin(photo.yaw),cos=Math.cos(photo.yaw);
+    const samples=[[-.27,.22],[0,.17],[.27,.22],[-.27,.62],[0,.58],[.27,.62]].map(([offset,y])=>
+      new T.Vector3(entry.x+sin*faceDepth+cos*offset*faceWidth,entry.top*y,entry.z+cos*faceDepth-sin*offset*faceWidth)
+    );
+    let best=Infinity;
+    // Prefer the photographed face. Raise or turn the camera when a nearby
+    // building would hide the entrance or leave the viewer inside its walls.
+    const scales=tall?[1,.88]:aspect<.7?[1,.84,.68]:[1,.84,.68,.55];
+    for(const scale of scales)for(const lift of [.23,.38,.55,.73,.93]){
+      for(const offset of [.14,-.14,.39,-.39,.68,-.68,.96,-.96]){
+        const yaw=photo.yaw+offset,dist=radius*fit*scale,flat=dist*Math.cos(lift);
+        eye.set(entry.x+Math.sin(yaw)*flat,targetGoal.y+dist*Math.sin(lift),entry.z+Math.cos(yaw)*flat);
+        if(boxByPlace.some(box=>box.containsPoint(eye)))continue;
+        let score=Math.abs(offset-.14)*.56+(lift-.23)+(1-scale)*1.5;
+        for(const sample of samples){
+          aim.copy(sample);
+          const distance=eye.distanceTo(aim);
+          ray.origin.copy(eye);ray.direction.subVectors(aim,eye).normalize();
+          if(boxByPlace.some(box=>ray.intersectBox(box,hit)&&hit.distanceTo(eye)<distance-.35))score+=2;
+        }
+        if(score>=best)continue;
+        best=score;azimuth=yaw;elevation=lift;targetRadius=radius*scale;
+      }
+    }
+  }
   function focusEntry(entry,fromTour=false) {
     if(innerWidth<700)weather.close();
     if(!fromTour)stopTour();
     selectOrbit();selected=entry;
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
     targetRadius=Math.max(160,Math.max(entry.spec.w,entry.spec.d)*3.6);
+    const photo=photoBuildings[entry.id];
+    if(photo)focusPhotoEntry(entry,photo);
     if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5*gateScale,entry.z);targetRadius=63*gateScale;azimuth=campusAxis.yaw;elevation=.055; }
     if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,10.5,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
     detailFocus='main';el('colonnadeView').hidden=entry.id!=='main';el('colonnadeView').textContent='查看柱廊细节';
     el('displayView').hidden=entry.id!=='main';el('displayView').textContent='查看校训石前立牌';
-    orbitCam.near=entry.id==='doorSouth'?.35:entry.id==='main'?1.5:14;orbitCam.updateProjectionMatrix();
+    orbitCam.near=entry.id==='doorSouth'?.35:entry.id==='main'||photo?1.5:14;orbitCam.updateProjectionMatrix();
     viewingAxis=false;el('axisView').hidden=entry.id!=='main';el('axisView').textContent='查看完整中轴线';
     el('detailTitle').textContent=entry.name;el('detailKind').textContent=categoryNames[entry.kind];el('detailDescription').textContent=entry.description;
     el('detail').hidden=false;el('card').hidden=true;
@@ -669,6 +801,9 @@ function init(T, PointerLockControls) {
     if(location.hash==='#main-axis')showAxis();
     if(location.hash==='#colonnade')showColonnade();
     if(location.hash==='#display')showDisplay();
+    const photoId=location.hash.slice(1);
+    const photoEntry=Object.hasOwn(photoBuildings,photoId)&&landmarks.find(e=>e.id===photoId);
+    if(photoEntry)focusEntry(photoEntry);
   }
   window.addEventListener('hashchange',openHash);openHash();
   window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality,weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};

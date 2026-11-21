@@ -67,6 +67,12 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     for(let i=0;i<=40;i++){const t=i/40;pts.push([cx-half+2*half*t,spring+4*rise*t*(1-t),z]);}
     curve(pts,r,material);
   }
+  function roadArrow(x,z,reverse=false) {
+    const shape=new T.Shape(),s=reverse?-1:1;
+    shape.moveTo(0,s*2.35);shape.lineTo(-.55,s*1.15);shape.lineTo(-.16,s*1.15);shape.lineTo(-.16,s*-.78);
+    shape.lineTo(.16,s*-.78);shape.lineTo(.16,s*1.15);shape.lineTo(.55,s*1.15);shape.closePath();
+    const geo=new T.ShapeGeometry(shape);geo.rotateX(-Math.PI/2);geo.translate(x,.305,z);emit(geo,materials.white,null,false);
+  }
   // 左右门卫翼房、下部门廊与上部连续立面。
   for(const side of [-1,1]) {
     const x=side*17.8;
@@ -129,11 +135,30 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
 
   // 程序化校名牌匾。没有把照片中的人物、广告字或水印贴到建筑上。
   const signCanvas=document.createElement('canvas');signCanvas.width=2048;signCanvas.height=288;
-  const ctx=signCanvas.getContext('2d');ctx.fillStyle='#d5dbd7';ctx.fillRect(0,0,2048,288);
-  ctx.strokeStyle='#a28e6d';ctx.lineWidth=12;ctx.strokeRect(7,7,2034,274);
-  ctx.font='700 205px "KaiTi","STKaiti","楷体",serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.shadowColor='#f4e5bd';ctx.shadowOffsetX=-2;ctx.shadowOffsetY=-3;ctx.shadowBlur=1;ctx.fillStyle='#725733';ctx.fillText('哈尔滨工业大学',1024,153,1840);
+  const ctx=signCanvas.getContext('2d');
+  function paintSignSurface() {
+    ctx.fillStyle='#d5dbd7';ctx.fillRect(0,0,2048,288);
+    ctx.strokeStyle='#a28e6d';ctx.lineWidth=12;ctx.strokeRect(7,7,2034,274);
+  }
+  function paintFallbackName() {
+    paintSignSurface();
+    ctx.font='700 205px "KaiTi","STKaiti","楷体",serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.shadowColor='#f4e5bd';ctx.shadowOffsetX=-2;ctx.shadowOffsetY=-3;ctx.shadowBlur=1;ctx.fillStyle='#725733';ctx.fillText('哈尔滨工业大学',1024,153,1840);
+    ctx.shadowColor='transparent';
+  }
+  paintFallbackName();
   const texture=new T.CanvasTexture(signCanvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
+  const standardName=document.getElementById('hitNameStandard');
+  function paintOfficialName() {
+    if(!standardName?.naturalWidth)return;
+    paintSignSurface();
+    ctx.save();
+    ctx.shadowColor='#f4e5bd';ctx.shadowOffsetX=-2;ctx.shadowOffsetY=-3;ctx.shadowBlur=1;
+    ctx.drawImage(standardName,124,22,1800,244);
+    ctx.restore();
+    texture.needsUpdate=true;
+  }
+  if(standardName?.complete)paintOfficialName();else standardName?.addEventListener('load',paintOfficialName,{once:true});
   const signMat=new T.MeshStandardMaterial({map:texture,bumpMap:texture,bumpScale:.018,roughness:.5,metalness:.12});
   block(0,10.13,2.48,11.7,1.73,.15,materials.shade);
   const sign=new T.PlaneGeometry(11.45,1.54);sign.translate(0,10.995,2.568);emit(sign,signMat);
@@ -157,9 +182,6 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     block(side*12,.16,7,.22,.32,46,materials.trim,false);
     block(side*10.8,.287,7,.13,.018,45,materials.white,false);
     block(side*.18,.287,7,.1,.018,45,materials.yellow,false);
-    for(let z=8;z<29;z+=2.2) {
-      const stripe=new T.BoxGeometry(3.8,.02,.13);stripe.rotateY(side*.48);stripe.translate(side*8.3,.29,z);emit(stripe,materials.white,null,false);
-    }
     // 双臂路灯，参考日间照片的银白灯杆。
     const lx=side*14.5,lz=12;
     cylinder(lx,.31,lz,.2,.12,10.2,materials.steel,12);
@@ -167,14 +189,11 @@ export function buildSouthGate({T,mesh,registerMesh,addCollider},entry) {
     rod([lx,7.8,lz],[lx+side*1.45,8.35,lz],.08,materials.steel);
     block(lx-side*2.12,10.43,lz,1.35,.17,.48,materials.lamp);
     block(lx+side*1.6,8.28,lz,1.15,.15,.42,materials.lamp);
-    for(const z of [16,23]) {
-      block(side*7.25,.3,z,.72,.1,.72,materials.iron,false);
-      cylinder(side*7.25,.4,z,.29,.065,.85,materials.red,16);
-      cylinder(side*7.25,.73,z,.2,.145,.18,materials.white,16);
-    }
     block(side*20.5,.2,10,2.4,.42,16,materials.trim,false);
     block(side*20.5,.62,10,2.05,.8,15.5,materials.hedge);
   }
+  for(const x of [-6.1,6.1])for(let z=3;z<45;z+=5.5)block(x,.285,z,.08,.018,2.25,materials.white,false);
+  roadArrow(-6.1,18,true);roadArrow(6.1,33,true);
   // 让临街铺装渐降接回周边地面，近景中不出现展示底座的垂直断面。
   function apronRamp(left,right,material,lift) {
     const geo=new T.PlaneGeometry(right-left,55,1,36);geo.rotateX(-Math.PI/2);

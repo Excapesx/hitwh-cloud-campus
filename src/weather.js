@@ -116,7 +116,7 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
       scene.fog.near=baseFog.near*(1-a.haze*.88);scene.fog.far=baseFog.far*(1-a.haze*.73);
       if(Math.abs(a.night-lastLit)>.005) {
         lastLit=a.night;
-        for(const material of windows){material.emissive.setHex(0xffcd85);material.emissiveIntensity=a.night*.55*(material.userData.nightBrightness??1);}
+        for(const material of windows){material.emissive.setHex(material.userData.nightColor??0xffcd85);material.emissiveIntensity=a.night*.55*(material.userData.nightBrightness??1);}
         for(const material of lamps){material.emissive.setHex(material.userData.nightColor??0xffe6b5);material.emissiveIntensity=a.night*(material.userData.nightPower??2.5);}
         for(const material of outlines){material.emissive.setHex(material.userData.nightColor??0xffc469);material.emissiveIntensity=a.night*(material.userData.nightPower??2.1);}
         for(const material of facades){material.emissive.setHex(0xffc77d);material.emissiveIntensity=a.night*.018;}
