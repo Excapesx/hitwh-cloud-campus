@@ -11,9 +11,10 @@ export function buildTerrain({T,mesh,box,m}) {
   mesh(slab,m.deepGrass,0,-5.15,0,false);
   const geo=new T.PlaneGeometry(490,680,122,170); geo.rotateX(-Math.PI/2); geo.translate(-10,0,0);
   const p=geo.attributes.position, colors=new Float32Array(p.count*3), color=new T.Color();
+  const lowGrass=new T.Color(0xfffdf4), slopeGrass=new T.Color(0xdce6d8);
   for(let i=0;i<p.count;i++) {
     const x=p.getX(i),z=p.getZ(i),y=height(x,z); p.setY(i,y);
-    color.setHex(y>7?0x73966b:0xa2b689).offsetHSL(0,0,.012*Math.sin(x*.21)*Math.cos(z*.2)); color.toArray(colors,i*3);
+    color.copy(lowGrass).lerp(slopeGrass,T.MathUtils.smoothstep(y,2,28)).toArray(colors,i*3);
   }
   const indices=[];
   const original=geo.index.array;
@@ -162,8 +163,8 @@ export function buildCampus(c) {
         const pts=[];for(let j=0;j<=100;j++){const a=j/100*Math.PI*2;pts.push(new T.Vector3(x+Math.cos(a)*(w/2-i*.65),y+.24,z+Math.sin(a)*(d/2-i*.7)));}
         mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),100,.045,3,false),m.line,0,0,0,false);
       }
-      oval(w/2-5,d/2-7,m.deepGrass,.27);
-      registerMesh(paving(x,z,w*.64,d*.66,m.grass,.3),entry);
+      oval(w/2-5,d/2-7,m.grass,.27);
+      registerMesh(paving(x,z,w*.64,d*.66,m.pitch,.3),entry);
       // 绿茵场线、球门和角旗让运动场从远处也能被识别成足球场。
       for(const xx of [-1,1])paving(x+xx*w*.32,z,.16,d*.66,m.line,.35);
       for(const zz of [-1,0,1])paving(x,z+zz*d*.33,w*.64,.16,m.line,.35);

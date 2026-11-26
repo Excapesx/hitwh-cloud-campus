@@ -7,6 +7,7 @@ import { setupRealisticRendering, surfaceMaterial } from './realism.js';
 import { createWeatherSystem } from './weather.js';
 import { photoBuildings } from './photo-buildings.js';
 import { createCampusTrees } from './campus-trees.js';
+import { createGrassMaterials } from './grass.js';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
  console.error(error);el('boot').textContent='三维场景未能启动。请用支持 WebGL 2 的 Chrome 或 Edge 打开；也可以查看原始地图。';
@@ -33,9 +34,9 @@ function init(T, PointerLockControls) {
   // ── 材质 ── 用共享几何与材质建模，窗格按材质批量实例化。
   const mat = (color, options) => new T.MeshStandardMaterial({ color, roughness:.87, ...options });
   const m = {
-    terrain:mat(0xffffff,{ vertexColors:true }), asphalt:mat(0x505c5a), curb:mat(0xa8b3a0),
+    ...createGrassMaterials(T,renderer,compactRendering), asphalt:mat(0x505c5a), curb:mat(0xa8b3a0),
     roadYellow:mat(0xe5b83f,{roughness:.62}), roadWhite:mat(0xe8e5d8,{roughness:.74}),
-    path:mat(0xe4dac2), stone:mat(0xece0c8), line:mat(0xe9ead6), grass:mat(0x799b61),
+    path:mat(0xe4dac2), stone:mat(0xece0c8), line:mat(0xe9ead6),
     deepGrass:mat(0x638752), water:mat(0x65a7b3,{ roughness:.53 }), wall:mat(0xe5cda8),
     light:mat(0xf2e3c4), dorm:mat(0xdcc3a8), clay:mat(0xbe896f), dark:mat(0x394b53),
     roof:mat(0x3c5054), trim:mat(0xa9b7b0), blue:mat(0x78959b),
