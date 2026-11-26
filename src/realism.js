@@ -65,7 +65,7 @@ export function surfaceMaterial(T,kind,options) {
   return material;
 }
 
-export function setupRealisticRendering(T,renderer,scene) {
+export function setupRealisticRendering(T,renderer,scene,compactRendering) {
   renderer.toneMapping=T.AgXToneMapping;renderer.toneMappingExposure=.9;
   renderer.info.autoReset=false;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.shadowMap.autoUpdate=false;
@@ -92,7 +92,7 @@ export function setupRealisticRendering(T,renderer,scene) {
   uniforms.showSunDisc.value=true;scene.add(sky);scene.background=null;
   scene.fog.color.setHex(0xc7d6dc);
   const sun=new T.DirectionalLight(0xfff2df,3.6);sun.castShadow=true;
-  sun.shadow.mapSize.set(3072,3072);sun.shadow.bias=-.000035;sun.shadow.normalBias=.025;sun.shadow.radius=2;
+  sun.shadow.mapSize.setScalar(compactRendering?1024:3072);sun.shadow.bias=-.000035;sun.shadow.normalBias=.025;sun.shadow.radius=2;
   sun.shadow.camera.near=10;sun.shadow.camera.far=900;
   const fill=new T.HemisphereLight(0xd1e5fb,0x716951,.35);scene.add(sun,sun.target,fill);
   const target=new T.Vector3(),gate=world(841,1510);
@@ -133,7 +133,7 @@ export function setupRealisticRendering(T,renderer,scene) {
     const next=pmrem.fromScene(envScene,.035,.1,5000);parent.add(sky);
     scene.environment=next.texture;environment.dispose();environment=next;uniforms.showSunDisc.value=disc;
   }
-  const supportsAO=renderer.extensions.has('EXT_color_buffer_float');
+  const supportsAO=!compactRendering&&renderer.extensions.has('EXT_color_buffer_float');
   function setShadowArea(close) {
     if(detailed===close)return;detailed=close;
     const main=campusAxis.at(close==='display'?displayLayout.distance:close==='colonnade'?campusAxis.colonnade:16),isMain=['main','colonnade','display'].includes(close);
@@ -158,6 +158,7 @@ export function setupRealisticRendering(T,renderer,scene) {
   setShadowArea(false);
   return {
     resize,setAtmosphere,
+    invalidateShadows() {shadowDirty=true;},
     render(camera,close) {
       renderer.info.reset();
       const now=performance.now();uniforms.time.value=reducedMotion.matches?0:now/1000;updateEnvironment(now);

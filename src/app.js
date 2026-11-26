@@ -1,12 +1,12 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, inside, walkable, height, world, buildings, categoryNames, tourIds, roadLines, lakes, campusAxis, axisTreeSites, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
-import { buildTerrain, buildCampus, distanceToRoad } from './model.js';
+import { outline, walkable, height, world, categoryNames, tourIds, roadLines, campusAxis, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
+import { buildTerrain, buildCampus } from './model.js';
 import { setupRealisticRendering, surfaceMaterial } from './realism.js';
 import { createWeatherSystem } from './weather.js';
 import { photoBuildings } from './photo-buildings.js';
-import { Tree as EzTree, TreePreset } from '@dgreenheck/ez-tree';
+import { createCampusTrees } from './campus-trees.js';
 const el=id=>document.getElementById(id);
 try { init(THREE,PointerLockControls); } catch(error) {
  console.error(error);el('boot').textContent='三维场景未能启动。请用支持 WebGL 2 的 Chrome 或 Edge 打开；也可以查看原始地图。';
@@ -23,11 +23,12 @@ function init(T, PointerLockControls) {
   scene.fog = new T.Fog(0xc8dfe4, 285, 1100);
   const walkCam = new T.PerspectiveCamera(67, 1, .12, 1250);
   const orbitCam = new T.PerspectiveCamera(42, 1, 14, 3250);
-  const renderer = new T.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+  const compactRendering = matchMedia('(max-width: 699px), (pointer: coarse)').matches;
+  const renderer = new T.WebGLRenderer({ antialias:!compactRendering, powerPreference:'high-performance' });
   renderer.outputColorSpace = T.SRGBColorSpace;
   const canvas = renderer.domElement;
   el('world').append(canvas);
-  const rendering=setupRealisticRendering(T,renderer,scene);
+  const rendering=setupRealisticRendering(T,renderer,scene,compactRendering);
 
   // ── 材质 ── 用共享几何与材质建模，窗格按材质批量实例化。
   const mat = (color, options) => new T.MeshStandardMaterial({ color, roughness:.87, ...options });
@@ -42,9 +43,7 @@ function init(T, PointerLockControls) {
     glass:mat(0x79b9c4,{ transparent:true, opacity:.54, roughness:.23, metalness:.12, depthWrite:false }),
     track:mat(0xa65d49), seatRed:mat(0xb34f43,{roughness:.82}), seatTeal:mat(0x4f9c98,{roughness:.78}), seatAmber:mat(0x9b704c,{roughness:.86}),
     steel:mat(0xc7cbc4,{roughness:.48,metalness:.58}),
-    brass:mat(0xe3ca8f,{ metalness:.2 }), bark:mat(0x745e48),
-    treeWhite:mat(0xe7e4d8,{roughness:.94}), treeBand:mat(0xd88742,{roughness:.88}),
-    broadLeaves:mat(0x6f8d54,{roughness:1}), autumnLeaves:mat(0xb36b3f,{roughness:1}), needles:mat(0xffffff,{ roughness:1 })
+    brass:mat(0xe3ca8f,{ metalness:.2 })
   };
   m.wall=surfaceMaterial(T,'plaster',{color:0xe5cda8,roughness:.9});
   m.light=surfaceMaterial(T,'stone',{color:0xf2e3c4,roughness:.8});
@@ -57,7 +56,6 @@ function init(T, PointerLockControls) {
   const landmarks = [];
   const rayMeshes = [];
   const windowPieces = [];
-  const roads = [];
   function mesh(geometry, material, x, y, z, cast = true) {
     const obj = new T.Mesh(geometry, material);
     obj.position.set(x,y,z);
@@ -144,7 +142,7 @@ function init(T, PointerLockControls) {
     hip(entry,x,y+h,z,w+1.1,d+1.1,roofHeight);
   }
 
-  const {field}=buildCampus({T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,roads,addCollider});
+  const {field,roads,walkways}=buildCampus({T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,addCollider});
   const temp = new T.Object3D();
   const windowMesh = new T.InstancedMesh(boxGeometry,m.windows,windowPieces.length);
   windowPieces.forEach(([x,y,z,w,h,d],i) => {
@@ -155,118 +153,8 @@ function init(T, PointerLockControls) {
   windowMesh.receiveShadow=true;
   scene.add(windowMesh);
 
-  // ── 树木 ── 采用 EZ-Tree 的 Oak/Ash 大型阔叶预设，保留分级枝干、树皮纹理和叶片卡片。
-  let seed=917113;
-  function random() {
-    seed=(Math.imul(seed,1664525)+1013904223)>>>0;
-    return seed/4294967296;
-  }
-  const ezTreePrototypes=[];
-  function createEzTree(preset,seedValue,leafTint=0x7ca85a,barkTint=0xe2c48c) {
-    const options=structuredClone(TreePreset[preset]);
-    options.seed=seedValue;
-    options.leaves.tint=leafTint;
-    options.bark.tint=barkTint;
-    options.leaves.billboard='double';
-    options.leaves.count=Math.round(options.leaves.count*3.2);
-    options.leaves.size*=2.05;
-    options.leaves.sizeVariance=.82;
-    options.leaves.alphaTest=.5;
-    const tree=new EzTree();
-    tree.loadFromJson(options);
-    tree.traverse(obj=>{if(obj.isMesh){obj.castShadow=true;obj.receiveShadow=true;}});
-    ezTreePrototypes.push(tree);
-    return tree;
-  }
-  const groveTree=createEzTree('Oak Large',23399,0xa8d46c,0xd0a873);
-  const avenueTree=createEzTree('Ash Large',36330,0x9bcd68,0xd5b77e);
-  function treeFit(x,z,size) {
-    let fitX=1,fitZ=1;
-    for(const building of buildings) {
-      const clearX=Math.abs(x-building.x)-building.w/2;
-      const clearZ=Math.abs(z-building.z)-building.d/2;
-      if(clearX<size*.62)fitX=Math.min(fitX,clamp((clearX+1.2)/(size*.62),.35,1));
-      if(clearZ<size*.62)fitZ=Math.min(fitZ,clamp((clearZ+1.2)/(size*.62),.35,1));
-    }
-    return {x:fitX,z:fitZ};
-  }
-  function placeEzTree(prototype,x,z,size,angle,spread=1) {
-    const tree=prototype.clone(true),ground=height(x,z),fit=treeFit(x,z,size);
-    const scale=size/45;
-    tree.position.set(x,ground,z);
-    tree.rotation.y=angle;
-    tree.scale.set(scale*fit.x*spread,scale,scale*fit.z*spread);
-    scene.add(tree);
-    return tree;
-  }
-  for(const {distance,lateral} of axisTreeSites) {
-    const point=campusAxis.at(distance,lateral);
-    placeEzTree(groveTree,point.x,point.z,5.8,.32*distance+lateral);
-  }
-  for(const distance of [73,84,94])for(const lateral of [-36,36]) {
-    const point=campusAxis.at(distance,lateral);
-    placeEzTree(groveTree,point.x,point.z,6.1,.22*distance+lateral);
-  }
-  const treeSites=[];
-  const treeCount=420;
-  function treeAllowed(x,z) {
-    if(!inside(x,z))return false;
-    const axis=campusAxis.project(x,z);
-    if(axis.distance>-10&&axis.distance<campusAxis.colonnade+5&&Math.abs(axis.lateral)<38)return false;
-    if(axis.distance>=campusAxis.colonnade+5&&axis.distance<campusAxis.length&&Math.abs(axis.lateral)<24)return false;
-    if(roads.some(r=>distanceToRoad(x,z,r)<r.width/2+2))return false;
-    if(buildings.some(b=>Math.abs(x-b.x)<b.w/2+3 && Math.abs(z-b.z)<b.d/2+3))return false;
-    if(lakes.some(l=>{const points=l.points.map(p=>world(...p));return x>Math.min(...points.map(p=>p.x))-2&&x<Math.max(...points.map(p=>p.x))+2&&z>Math.min(...points.map(p=>p.z))-2&&z<Math.max(...points.map(p=>p.z))+2;}))return false;
-    return treeSites.every(p=>(p.x-x)**2+(p.z-z)**2>18);
-  }
-  function plant(x,z) { if(treeAllowed(x,z))treeSites.push({x,z,size:3.7+random()*4.1,angle:random()*Math.PI}); }
-  for(let attempts=0;treeSites.length<treeCount && attempts<30000;attempts++)plant(-236+445*random(),-315+630*random());
-  treeSites.forEach(({x,z,size,angle})=>placeEzTree(groveTree,x,z,size,angle));
+  const campusTrees=createCampusTrees(T,scene,{roads,walkways,colliders,landmarks},compactRendering);
 
-  // 主路两侧采用照片中的法桐式树阵，树干下段刷白、上缘带橙色警示漆。
-  // 它们与随机林地分开实例化，既保留远景层次，也能在道路机位形成连续树廊。
-  const roadTreeSites=[];
-  const treeRows=new Set(['环山路','西侧道路','学子路','生活区道路','东侧道路','主楼东路','体育场西路','体育场东路','体育场南路','南门道路']);
-  const lakeBounds=lakes.map(l=>{
-    const points=l.points.map(p=>world(...p));
-    return {minX:Math.min(...points.map(p=>p.x))-2,maxX:Math.max(...points.map(p=>p.x))+2,minZ:Math.min(...points.map(p=>p.z))-2,maxZ:Math.max(...points.map(p=>p.z))+2};
-  });
-  function roadTreeAllowed(x,z) {
-    if(!inside(x,z))return false;
-    if(buildings.some(b=>Math.abs(x-b.x)<b.w/2+3.6&&Math.abs(z-b.z)<b.d/2+3.6))return false;
-    if(lakeBounds.some(b=>x>b.minX&&x<b.maxX&&z>b.minZ&&z<b.maxZ))return false;
-    return roadTreeSites.every(p=>(p.x-x)**2+(p.z-z)**2>36);
-  }
-  for(const line of roadLines) {
-    if(!treeRows.has(line.name))continue;
-    const points=line.points.map(p=>world(...p));
-    for(let i=1;i<points.length;i++) {
-      const a=points[i-1],b=points[i],dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz),steps=Math.max(1,Math.ceil(length/10.8));
-      const nx=-dz/length,nz=dx/length,offset=line.width/2+2.25;
-      for(let step=0;step<=steps;step++) {
-        const t=step/steps,center={x:a.x+dx*t,z:a.z+dz*t};
-        for(const side of [-1,1]) {
-          const x=center.x+nx*offset*side,z=center.z+nz*offset*side;
-          if(roadTreeAllowed(x,z))roadTreeSites.push({x,z,size:4.8+random()*1.5,angle:random()*Math.PI});
-        }
-      }
-    }
-  }
-  if(roadTreeSites.length) {
-    roadTreeSites.forEach(({x,z,size,angle})=>{
-      const ground=height(x,z),tree=placeEzTree(avenueTree,x,z,size,angle,1.24);
-      const fit=treeFit(x,z,size),radius=.25*Math.min(fit.x,fit.z);
-      disc(x,ground,z,radius,.95,m.treeWhite);
-      disc(x,ground+.95,z,radius*1.05,.2,m.treeBand);
-      tree.userData.roadTree=true;
-    });
-  }
-
-  // ── 控制 ── 漫游与俯瞰各用一台相机；只有已锁定时才让 WASD 更新玩家。
-  for(const side of [-1,1]) {
-    const point=campusAxis.at(campusAxis.length-6,side*12);
-    placeEzTree(avenueTree,point.x,point.z,7.2,side*.42,1.18);
-  }
   const controls=new PointerLockControls(walkCam,canvas);
   controls.minPolarAngle=.055;
   controls.maxPolarAngle=Math.PI-.055;
@@ -784,7 +672,7 @@ function init(T, PointerLockControls) {
     if(photoEntry)focusEntry(photoEntry);
   }
   window.addEventListener('hashchange',openHash);openHash();
-  window.__campus={get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:rendering.quality,weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
+  window.__campus={treeAudit:campusTrees.audit,get state(){return {mode,started,count:landmarks.length,selected:selected?.id,tourIndex,autoRotate,labelsVisible,camera:orbitCam.position.toArray(),walkPosition:walkCam.position.toArray(),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,quality:{...rendering.quality,compactRendering,pixelRatio:renderer.getPixelRatio(),nearTrees:campusTrees.nearCount},weather:weather.state};},project(id){const e=landmarks.find(e=>e.id===id);if(!e)return null;const p=new T.Vector3(e.x,e.top*.55,e.z).project(orbitCam);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}};
 
   // ── 主循环 ── 渲染跟随屏幕刷新率；物理累加到固定的 1/60 秒步长。
   let lastCompact=null;
@@ -797,7 +685,7 @@ function init(T, PointerLockControls) {
     }
     lastCompact=compact;
     if(w<700&&!el('weatherPanel').hidden)el('detail').hidden=true;
-    renderer.setPixelRatio(Math.min(devicePixelRatio||1,w<700?1.35:1.65));
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,compactRendering?1:1.65));
     renderer.setSize(w,h);
     rendering.resize(w,h);
     for(const camera of [walkCam,orbitCam]) {
@@ -860,7 +748,7 @@ function init(T, PointerLockControls) {
     const detailArea=nearDisplay?'display':nearGate?'gate':nearColumn?'colonnade':nearMain?'main':false;
     const activeCamera=mode==='orbit'?orbitCam:walkCam;
     const fit=mode==='orbit'?fitDistance():1;
-    for(const tree of ezTreePrototypes)tree.update(now/1000);
+    if(campusTrees.update(activeCamera.position,reduceMotion.matches?0:now/1000)) rendering.invalidateShadows();
     weather.update(elapsed,activeCamera,detailArea,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});
     rendering.render(activeCamera,detailArea);
     requestAnimationFrame(frame);

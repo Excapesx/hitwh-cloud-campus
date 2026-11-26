@@ -46,7 +46,8 @@ export function buildTerrain({T,mesh,box,m}) {
 }
 
 export function buildCampus(c) {
-  const {T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,roads,addCollider}=c;
+  const {T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,addCollider}=c;
+  const roads=[];
   function footprintGround(x,z,w,d) {
     const halfW=w/2,halfD=d/2;
     return Math.min(
@@ -70,17 +71,17 @@ export function buildCampus(c) {
     const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setIndex(ids);geo.computeVertexNormals();
     const mat=material.clone();mat.side=T.DoubleSide;
     mesh(geo,mat,0,0,0,false);
-    return raw;
+    return curve;
   }
   for(const line of roadLines) {
-    const raw=ribbon(line.points,line.width+1.4,m.curb,.2);ribbon(line.points,line.width,m.asphalt,.29);
+    const curve=ribbon(line.points,line.width+1.4,m.curb,.2);ribbon(line.points,line.width,m.asphalt,.29);
     const marked=line.width>=4.8&&!line.name.includes('中轴')&&!line.name.includes('主楼前');
     if(marked) {
       ribbon(line.points,.105,m.roadYellow,.355);
       const edge=Math.max(1.55,line.width/2-.32);
       ribbon(line.points,.07,m.roadWhite,.35,edge);ribbon(line.points,.07,m.roadWhite,.35,-edge);
     }
-    for(let i=1;i<raw.length;i++) roads.push({a:raw[i-1],b:raw[i],width:line.width});
+    roads.push({name:line.name,width:line.width,curve});
   }
   // 南门照片里的主路有连续浅色人行带。把同样的窄铺装延伸到环山路、
   // 学子路和体育场周边，路缘与坡面之间形成清晰的步行尺度。
@@ -92,7 +93,7 @@ export function buildCampus(c) {
     ribbon(line.points,sidewalkWidth,m.path,.37,offset);
     ribbon(line.points,sidewalkWidth,m.path,.37,-offset);
   }
-  for(const p of paths) ribbon(p,1.45,m.path,.34);
+  const walkways=paths.map(path=>({width:1.45,curve:ribbon(path,1.45,m.path,.34)}));
   function lake(points,smooth=false) {
     let polygon=points.map(([x,y])=>{const p=world(x,y);return new T.Vector2(p.x,-p.z);});
     if(smooth){const curve=new T.CatmullRomCurve3(polygon.map(p=>new T.Vector3(p.x,0,-p.y)),true,'centripetal');polygon=curve.getPoints(100).map(p=>new T.Vector2(p.x,-p.z));
@@ -105,7 +106,7 @@ export function buildCampus(c) {
   // 学子餐厅后方的照片可见一条红砖步道和连续白栏杆。它们与坡面共用
   // height(x,z)，栏杆分段贴地，避免在起伏草坡上出现悬空的直线。
   const hillWalk=[[570,790],[612,762],[664,746],[720,748],[778,763],[838,778],[900,783]];
-  ribbon(hillWalk,1.9,m.path,.32);
+  walkways.push({width:1.9,curve:ribbon(hillWalk,1.9,m.path,.32)});
   const fencePoints=[[600,735],[670,715],[745,720],[820,742],[900,770]].map(([px,pz])=>world(px,pz));
   function beamBetween(a,b,width,material) {
     const start=new T.Vector3(a.x,a.y,a.z),end=new T.Vector3(b.x,b.y,b.z);
@@ -259,7 +260,7 @@ export function buildCampus(c) {
       piece(entry,x,y+4,z,alongX?span+2:2,1.2,alongX?2:span+2,m.roof,{footprint:false});
     } else block(entry,x,y,z,w,d,h,floors,material);
   }
-  return {field:fieldEntries[0]};
+  return {field:fieldEntries[0],roads,walkways};
 }
 
 export function distanceToRoad(x,z,road) {
