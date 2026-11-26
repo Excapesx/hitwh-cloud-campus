@@ -1,6 +1,6 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { campusAxis, mainScale, axisLayout, displayLayout } from './campus-data.js';
+import { campusAxis, mainScale, gateScale, axisLayout, displayLayout } from './campus-data.js';
 import { surfaceMaterial } from './realism.js';
 import { buildColonnade } from './colonnade.js';
 import { buildCommemorativeDisplay } from './commemorative-display.js';
@@ -9,11 +9,13 @@ import { buildCommemorativeDisplay } from './commemorative-display.js';
 const bodySolids=[
   {x:0,z:-5,w:52.75,d:9,h:18.4},
   {x:0,z:-2.5,w:11.5,d:10,h:20.3},
-  ...[-1,1].map(side=>({x:side*26.3,z:7.7,w:8.2,d:26,h:16.1}))
+  ...[-1,1].map(side=>({x:side*26.3,z:7.7,w:8.2,d:26,h:16.1})),
+  {x:-26.3,z:-21.4,w:8.2,d:32.4,h:16.1},
+  {x:-2.3,z:-22.3,w:8.2,d:26.6,h:16.1}
 ];
 export const mainBuildingSolids=bodySolids.map(s=>({...s,x:s.x*mainScale.x,z:s.z*mainScale.z,w:s.w*mainScale.x,d:s.d*mainScale.z,h:s.h*mainScale.y}));
 
-export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
+export function buildMainAxis({T,mesh,registerMesh,addCollider},entry) {
   const stone=surfaceMaterial(T,'stone',{color:0xe1e5dc,roughness:.78});
   const trim=surfaceMaterial(T,'stone',{color:0xf0eee0,roughness:.66});
   const recess=surfaceMaterial(T,'stone',{color:0xb8c4bd,roughness:.84});
@@ -126,6 +128,12 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
     entry.faces.push({x:p.x,z:p.z,w:Math.abs(c)*s.w*mainScale.x+sin*s.d*mainScale.z,d:Math.abs(c)*s.d*mainScale.z+sin*s.w*mainScale.x});
     cornice(s.x,s.h,s.z,s.w,s.d);
   }
+  for(const wing of bodySolids.slice(4)){
+    facade(wing.x,wing.z-wing.d/2-.07,wing.w,6,4,15.5);
+    for(const side of [-1,1])for(let row=0;row<6;row++)for(let bay=0;bay<7;bay++){
+      window(wing.x+side*(wing.w/2+.06),.75+row*2.53,wing.z+(bay/7-.43)*wing.d,1.12,1.45,side);
+    }
+  }
   for(const side of [-1,1]) {
     const x=side*26.3;
     facade(x,20.78,7,6,4,15.5);facade(side*15,-.43,16.8,6,8,16.2);
@@ -208,23 +216,20 @@ export function buildMainAxis({T,mesh,registerMesh,addCollider,m},entry) {
   function ellipse(z,rx,rz,material,y) {
     const g=new T.CircleGeometry(1,96);g.rotateX(-Math.PI/2);g.scale(rx,1,rz);g.translate(0,y,z);emit(g,material,false,false);
   }
-  block(0,.035,34,70,.13,56,granite,false,false);
-  block(0,.305,37.5,70,.035,49,granite,false,false);
-  for(const side of [-1,1])block(side*34.65,.343,37.5,.3,.025,49,trim,false,false);
-  for(const side of [-1,1]) {
-    block(side*25,.18,28,9,.18,13,trim,false,false);
-    block(side*25,.37,28,8.4,.16,12.4,m.grass,false,false);
-  }
+  block(0,.03,14,41,.09,14,granite,false,false);
+  const forecourt=new T.Shape([[-26,29],[22,30],[23,41],[17,50],[9,56],[-8,58],[-18,51],[-24,43]]
+    .map(([x,z])=>new T.Vector2(x,-z)));
+  const paving=new T.ShapeGeometry(forecourt).rotateX(-Math.PI/2).translate(0,.343,0);
+  emit(paving,granite,false,false);
   buildColonnade({T,emit,block,worldSolid,trim,glow,granite});
   const promenadeStart=13,promenadeEnd=campusAxis.motto-axisLayout.plazaZ;
   block(0,.342,(promenadeStart+promenadeEnd)/2,axisLayout.promenadeWidth,.02,promenadeEnd-promenadeStart,granite,false,false);
   for(const side of [-1,1]) {
     // 双湖中央保持三条笔直、成对的铺装带，取消斜穿中轴的旧路径。
     block(side*(axisLayout.promenadeWidth/2-.14),.365,(promenadeStart+promenadeEnd)/2,.18,.015,promenadeEnd-promenadeStart,edging,false,false);
-    block(side*4.3,.342,82.5,1.45,.02,41,granite,false,false);
-    ribbon([[side*17,61],[side*29,67],[side*33.3,80],[side*29,92],[side*17,98],[side*9,101],[side*5,104]],1.45,granite,.36);
-    block(side*5.8,.342,143,1.6,.02,45,granite,false,false);
-    block(side*4.65,.35,143,.22,.14,45,trim,false,false);
+    const approach=campusAxis.length-14*gateScale-displayLayout.plazaEnd;
+    block(side*6.15,.342,displayLayout.plazaEnd+approach/2,1.6,.02,approach,granite,false,false);
+    block(side*4.9,.35,displayLayout.plazaEnd+approach/2,.22,.14,approach,trim,false,false);
   }
   ellipse(campusAxis.motto,axisLayout.plazaX,axisLayout.plazaZ,trim,.35);
   ellipse(campusAxis.motto,axisLayout.plazaX-.3,axisLayout.plazaZ-.3,granite,.365);

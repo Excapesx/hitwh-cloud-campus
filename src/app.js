@@ -1,7 +1,8 @@
 
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { outline, walkable, height, world, categoryNames, tourIds, roadLines, campusAxis, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
+import { outline, campusBounds, walkable, height, categoryNames, tourIds, roadLines, lakes, campusAxis, gateScale, colonnadeLayout, colonnadePoint, displayLayout } from './campus-data.js';
+import { sitePoint, footprintBounds, inFootprint } from './footprint.js';
 import { buildTerrain, buildCampus } from './model.js';
 import { setupRealisticRendering, surfaceMaterial } from './realism.js';
 import { createWeatherSystem } from './weather.js';
@@ -17,8 +18,7 @@ try { init(THREE,PointerLockControls); } catch(error) {
 }
 
 function init(T, PointerLockControls) {
-  // 图面坐标转为场景坐标；单位不是测绘米数，图面上方不等于正北。
-  const bounds = { minX:-246, maxX:215, minZ:-323, maxZ:340 };
+  const bounds = campusBounds;
   const scene = new T.Scene();
   scene.background = new T.Color(0xc8dfe4);
   scene.fog = new T.Fog(0xc8dfe4, 285, 1100);
@@ -80,9 +80,9 @@ function init(T, PointerLockControls) {
   buildTerrain({T,mesh,box,m});
 
   // 水平铺装依地形切小网格，略抬高以避免与地表深度冲突。
-  function paving(x,z,w,d,material,lift=.09) {
+  function paving(x,z,w,d,material,lift=.09,yaw=0) {
     const geo = new T.PlaneGeometry(w,d,Math.ceil(w/3),Math.ceil(d/3));
-    geo.rotateX(-Math.PI/2);
+    geo.rotateX(-Math.PI/2).rotateY(yaw);
     const p = geo.attributes.position;
     for (let i=0; i<p.count; i++) p.setY(i,height(x+p.getX(i),z+p.getZ(i))+lift);
     geo.computeVertexNormals();
@@ -90,8 +90,9 @@ function init(T, PointerLockControls) {
   }
 
   // ── 建筑 ── 建筑资料、轮廓拾取网格和碰撞体分别登记。
-  function addCollider(x,y,z,w,h,d) {
-    colliders.push({ minX:x-w/2,maxX:x+w/2,minY:y,maxY:y+h,minZ:z-d/2,maxZ:z+d/2 });
+  function addCollider(x,y,z,w,h,d,yaw=0) {
+    const footprint={x,z,w,d,yaw};
+    colliders.push({...footprint,...footprintBounds(footprint),minY:y,maxY:y+h});
   }
   function landmark(name,code,description,x,z,kind='study',priority=2) {
     const entry={name,code,description,x,z,kind,priority,top:height(x,z),faces:[]};
@@ -103,51 +104,59 @@ function init(T, PointerLockControls) {
     rayMeshes.push(obj);
     return obj;
   }
-  function piece(entry,x,y,z,w,h,d,material,{solid=true,footprint=solid,cast=true}={}) {
+  function piece(entry,x,y,z,w,h,d,material,{solid=true,footprint=solid,cast=true,yaw=0}={}) {
     const obj=registerMesh(box(x,y,z,w,h,d,material,cast),entry);
+    obj.rotation.y=yaw;
     entry.top=Math.max(entry.top,y+h);
-    if (solid) addCollider(x,y,z,w,h,d);
-    if (footprint) entry.faces.push({x,z,w,d});
+    if (solid) addCollider(x,y,z,w,h,d,yaw);
+    if (footprint) entry.faces.push({x,z,w,d,yaw,top:y+h});
     return obj;
   }
-  function hip(entry,x,y,z,w,d,h) {
+  function hip(entry,x,y,z,w,d,h,yaw) {
     const geo = new T.CylinderGeometry(.74,1,1,4,1);
     geo.rotateY(Math.PI/4);
     const unitRadius=1/Math.SQRT2;
     geo.scale(unitRadius,1,unitRadius);
     const obj=registerMesh(mesh(geo,m.roof,x,y+h/2,z),entry);
+    obj.rotation.y=yaw;
     obj.scale.set(w,h,d);
     entry.top=Math.max(entry.top,y+h);
   }
-  function windows(x,y,z,w,d,h,floors,columns) {
+  function windows(x,y,z,w,d,h,floors,columns,yaw) {
     const band=h/floors;
     for (let row=0; row<floors; row++) {
       const wy=y+(row+.52)*band, wh=Math.min(2.35,band*.54);
       for (let column=0; column<columns; column++) {
-        const wx=x+((column+.5)/columns-.5)*(w-2.8);
+        const u=((column+.5)/columns-.5)*(w-2.8);
         const ww=Math.min(2.8,(w-2.8)/columns*.56);
-        windowPieces.push([wx,wy,z+d/2,ww,wh,.15],[wx,wy,z-d/2,ww,wh,.15]);
+        for(const side of [-1,1]){
+          const p=sitePoint(x,z,yaw,u,side*d/2);
+          windowPieces.push([p.x,wy,p.z,ww,wh,.15,yaw]);
+        }
       }
       const sideCount=Math.max(2,Math.round(d/5));
       for (let column=0; column<sideCount; column++) {
-        const wz=z+((column+.5)/sideCount-.5)*(d-1.8);
-        windowPieces.push([x+w/2,wy,wz,.15,wh,Math.min(2.45,d/sideCount*.53)],
-                          [x-w/2,wy,wz,.15,wh,Math.min(2.45,d/sideCount*.53)]);
+        const v=((column+.5)/sideCount-.5)*(d-1.8);
+        for(const side of [-1,1]){
+          const p=sitePoint(x,z,yaw,side*w/2,v);
+          windowPieces.push([p.x,wy,p.z,.15,wh,Math.min(2.45,d/sideCount*.53),yaw]);
+        }
       }
     }
   }
-  function block(entry,x,y,z,w,d,h,floors,material,roofHeight=1.25) {
-    piece(entry,x,y-.09,z,w,h+.09,d,material);
-    windows(x,y,z,w,d,h,floors,Math.max(3,Math.round(w/5)));
-    piece(entry,x,y+h-.45,z,w+.35,.45,d+.35,m.light,{solid:false});
-    hip(entry,x,y+h,z,w+1.1,d+1.1,roofHeight);
+  function block(entry,x,y,z,w,d,h,floors,material,roofHeight=.45,yaw=0) {
+    piece(entry,x,y-.09,z,w,h+.09,d,material,{yaw});
+    windows(x,y,z,w,d,h,floors,Math.max(3,Math.round(w/5)),yaw);
+    piece(entry,x,y+h-.45,z,w+.35,.45,d+.35,m.light,{solid:false,yaw});
+    hip(entry,x,y+h,z,w+.5,d+.5,roofHeight,yaw);
   }
 
   const {field,roads,walkways}=buildCampus({T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,addCollider});
   const temp = new T.Object3D();
   const windowMesh = new T.InstancedMesh(boxGeometry,m.windows,windowPieces.length);
-  windowPieces.forEach(([x,y,z,w,h,d],i) => {
+  windowPieces.forEach(([x,y,z,w,h,d,yaw],i) => {
     temp.position.set(x,y,z); temp.scale.set(w,h,d);
+    temp.rotation.y=yaw;
     temp.updateMatrix(); windowMesh.setMatrixAt(i,temp.matrix);
   });
   windowMesh.instanceMatrix.needsUpdate=true;
@@ -166,12 +175,13 @@ function init(T, PointerLockControls) {
   const spawn=campusAxis.at(campusAxis.length-12);
   const displayCenter=campusAxis.at(displayLayout.distance);
   walkCam.position.set(spawn.x,height(spawn.x,spawn.z)+eyeHeight,spawn.z);
-  const mainView=world(879,1141);
+  const mainView=campusAxis.origin;
   walkCam.lookAt(mainView.x,eyeHeight,mainView.z);
   let mode='orbit', started=false, accumulator=0, dragId=null, lockPending=false;
   let firstLookEvent=false;
   let dragX=0, dragY=0, azimuth=.14, elevation=.98, radius=950, targetRadius=950, dragEndedAt=-Infinity;
-  const orbitTarget=new T.Vector3(-12,7,0);
+  const overview=new T.Vector3(-67,7,-30);
+  const orbitTarget=overview.clone();
   const targetGoal=orbitTarget.clone();
   let autoRotate=false,labelsVisible=true,selected=null,tourIndex=-1,tourAt=0,viewingAxis=false,detailFocus='main';
   const landing=campusAxis.at(campusAxis.length-12);
@@ -307,7 +317,7 @@ function init(T, PointerLockControls) {
     return colliders.some(b=>
       x+bodyRadius>b.minX && x-bodyRadius<b.maxX &&
       z+bodyRadius>b.minZ && z-bodyRadius<b.maxZ &&
-      floor+.08<b.maxY && floor+eyeHeight>b.minY
+      floor+.08<b.maxY && floor+eyeHeight>b.minY && inFootprint(x,z,b,bodyRadius)
     );
   }
   function walkStep(dt) {
@@ -438,16 +448,23 @@ function init(T, PointerLockControls) {
   mapBase.width=map.width;
   mapBase.height=map.height;
   const base=mapBase.getContext('2d');
-  const mapScale=.6;
-  const mx=x=>map.width/2+(x+12)*mapScale;
-  const mz=z=>map.height/2+z*mapScale;
-  function mapRect(ctx,x,z,w,d) { ctx.fillRect(mx(x-w/2),mz(z-d/2),w*mapScale,d*mapScale); }
+  const mapScale=Math.min((map.width-18)/(bounds.maxX-bounds.minX),(map.height-18)/(bounds.maxZ-bounds.minZ));
+  const mx=x=>map.width/2+(x-(bounds.minX+bounds.maxX)/2)*mapScale;
+  const mz=z=>map.height/2+(z-(bounds.minZ+bounds.maxZ)/2)*mapScale;
+  function mapRect(ctx,{x,z,w,d,yaw=0}) {
+    ctx.save();ctx.translate(mx(x),mz(z));ctx.rotate(-yaw);
+    ctx.fillRect(-w*mapScale/2,-d*mapScale/2,w*mapScale,d*mapScale);ctx.restore();
+  }
   base.fillStyle='#d2e3e3';base.fillRect(0,0,map.width,map.height);
   base.fillStyle='#a4b78e';base.beginPath();outline.forEach((p,i)=>i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z)));base.closePath();base.fill();
+  base.fillStyle='#78aeb6';
+  for(const lake of lakes){
+    base.beginPath();lake.points.forEach(({x,z},i)=>i?base.lineTo(mx(x),mz(z)):base.moveTo(mx(x),mz(z)));base.fill();
+  }
   base.strokeStyle='#6e7b70';base.lineCap='round';base.lineJoin='round';
-  for(const r of roadLines){base.lineWidth=r.width*mapScale;base.beginPath();r.points.forEach(([x,y],i)=>{const p=world(x,y);i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z));});base.stroke();}
+  for(const r of roadLines){base.lineWidth=r.width*mapScale;base.beginPath();r.points.forEach(({x,z},i)=>i?base.lineTo(mx(x),mz(z)):base.moveTo(mx(x),mz(z)));base.stroke();}
   const mapColors={study:'#46786c',life:'#b17c59',sport:'#528497',gate:'#897646'};
-  for(const entry of landmarks){base.fillStyle=mapColors[entry.kind];for(const f of entry.faces)mapRect(base,f.x,f.z,f.w,f.d);}
+  for(const entry of landmarks){base.fillStyle=mapColors[entry.kind];for(const f of entry.faces)mapRect(base,f);}
   base.strokeStyle='#d0bc85';base.lineWidth=2;base.beginPath();
   for(let i=0;i<=24;i++){const a=-colonnadeLayout.halfAngle+2*colonnadeLayout.halfAngle*i/24,local=colonnadePoint(a),p=campusAxis.at(local.z,local.x);i?base.lineTo(mx(p.x),mz(p.z)):base.moveTo(mx(p.x),mz(p.z));}base.stroke();
   const stonePoint=campusAxis.at(campusAxis.motto);base.fillStyle='#b28552';base.beginPath();base.arc(mx(stonePoint.x),mz(stonePoint.z),2.4,0,Math.PI*2);base.fill();
@@ -503,7 +520,7 @@ function init(T, PointerLockControls) {
     }
     el('resultCount').textContent=matches.length+' 处地点';el('empty').hidden=matches.length>0;
   }
-  function focusPhotoEntry(entry,photo) {
+  function focusPhotoEntry(entry) {
     const {w,d}=entry.spec;
     const ground=height(entry.x,entry.z),buildingHeight=entry.top-ground;
     const tall=buildingHeight>Math.max(w,d);
@@ -514,14 +531,14 @@ function init(T, PointerLockControls) {
     const fit=Math.max(1,.78/aspect);
     const eye=new T.Vector3(),aim=new T.Vector3(),ray=new T.Ray(),hit=new T.Vector3();
     const boxByPlace=landmarks.filter(e=>e!==entry&&e.kind!=='sport').flatMap(e=>
-      e.faces.map(f=>new T.Box3(
-        new T.Vector3(f.x-f.w/2-.12,height(f.x,f.z),f.z-f.d/2-.12),
-        new T.Vector3(f.x+f.w/2+.12,f.top??e.top,f.z+f.d/2+.12)
-      ))
+      e.faces.map(f=>{
+        const b=footprintBounds(f);
+        return new T.Box3(new T.Vector3(b.minX-.12,height(f.x,f.z),b.minZ-.12),
+          new T.Vector3(b.maxX+.12,f.top??e.top,b.maxZ+.12));
+      })
     );
-    const crosswise=Math.abs(Math.sin(photo.yaw))>.5;
-    const faceDepth=(crosswise?w:d)*.45,faceWidth=crosswise?d:w;
-    const sin=Math.sin(photo.yaw),cos=Math.cos(photo.yaw);
+    const faceDepth=d*.45,faceWidth=w;
+    const heading=entry.spec.yaw,sin=Math.sin(heading),cos=Math.cos(heading);
     const samples=[[-.27,.22],[0,.17],[.27,.22],[-.27,.62],[0,.58],[.27,.62]].map(([offset,y])=>
       new T.Vector3(entry.x+sin*faceDepth+cos*offset*faceWidth,entry.top*y,entry.z+cos*faceDepth-sin*offset*faceWidth)
     );
@@ -531,7 +548,7 @@ function init(T, PointerLockControls) {
     const scales=tall?[1,.88]:aspect<.7?[1,.84,.68]:[1,.84,.68,.55];
     for(const scale of scales)for(const lift of [.23,.38,.55,.73,.93]){
       for(const offset of [.14,-.14,.39,-.39,.68,-.68,.96,-.96]){
-        const yaw=photo.yaw+offset,dist=radius*fit*scale,flat=dist*Math.cos(lift);
+        const yaw=heading+offset,dist=radius*fit*scale,flat=dist*Math.cos(lift);
         eye.set(entry.x+Math.sin(yaw)*flat,targetGoal.y+dist*Math.sin(lift),entry.z+Math.cos(yaw)*flat);
         if(boxByPlace.some(box=>box.containsPoint(eye)))continue;
         let score=Math.abs(offset-.14)*.56+(lift-.23)+(1-scale)*1.5;
@@ -553,7 +570,7 @@ function init(T, PointerLockControls) {
     targetGoal.set(entry.x,Math.min(entry.top*.3+7,19),entry.z);
     targetRadius=Math.max(160,Math.max(entry.spec.w,entry.spec.d)*3.6);
     const photo=photoBuildings[entry.id];
-    if(photo)focusPhotoEntry(entry,photo);
+    if(photo)focusPhotoEntry(entry);
     if(entry.id==='doorSouth') { targetGoal.set(entry.x,5.5*gateScale,entry.z);targetRadius=63*gateScale;azimuth=campusAxis.yaw;elevation=.055; }
     if(entry.id==='main') { const p=campusAxis.at(3);targetGoal.set(p.x,10.5,p.z);targetRadius=112;azimuth=campusAxis.yaw;elevation=.14; }
     detailFocus='main';el('colonnadeView').hidden=entry.id!=='main';el('colonnadeView').textContent='查看柱廊细节';
@@ -568,7 +585,7 @@ function init(T, PointerLockControls) {
   }
   function resetView() {
     detailFocus='main';orbitCam.near=14;orbitCam.updateProjectionMatrix();
-    stopTour();selectOrbit();targetGoal.set(-12,7,0);azimuth=.14;elevation=.98;targetRadius=950;
+    stopTour();selectOrbit();targetGoal.copy(overview);azimuth=.14;elevation=.98;targetRadius=1050;
     selection.visible=false;selected=null;el('detail').hidden=true;renderList();
   }
   function stopTour() { tourIndex=-1;el('tour').setAttribute('aria-pressed','false');el('tour').textContent='地标巡览';el('tourStatus').hidden=true; }
@@ -594,7 +611,7 @@ function init(T, PointerLockControls) {
     const entry=landmarks.find(e=>e.id==='main');focusEntry(entry);
     selectOrbit();stopTour();viewingAxis=true;detailFocus='axis';
     orbitCam.near=14;orbitCam.updateProjectionMatrix();
-    const p=campusAxis.at(88);targetGoal.set(p.x,3,p.z);targetRadius=257;azimuth=campusAxis.yaw;elevation=.79;
+    const p=campusAxis.at(campusAxis.length*.52);targetGoal.set(p.x,3,p.z);targetRadius=281;azimuth=campusAxis.yaw;elevation=.79;
     el('axisView').textContent='查看主楼正面';
   }
   el('axisView').addEventListener('click',()=>viewingAxis?focusEntry(landmarks.find(e=>e.id==='main')):showAxis());
@@ -727,8 +744,6 @@ function init(T, PointerLockControls) {
       updateTour(now);
       const fit=fitDistance();
       const r=radius*fit, flat=r*Math.cos(elevation);
-      scene.fog.near=490*fit;
-      scene.fog.far=1560*fit;
       orbitCam.position.set(orbitTarget.x+Math.sin(azimuth)*flat,
                             orbitTarget.y+r*Math.sin(elevation),
                             orbitTarget.z+Math.cos(azimuth)*flat);
@@ -741,7 +756,7 @@ function init(T, PointerLockControls) {
       updateMap();
       lastMap=now;
     }
-    const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<100:Math.hypot(walkCam.position.x-54.45,walkCam.position.z-297)<42;
+    const nearGate=mode==='orbit'?selected?.id==='doorSouth'&&radius<100:Math.hypot(walkCam.position.x-campusAxis.end.x,walkCam.position.z-campusAxis.end.z)<42;
     const nearMain=mode==='orbit'?selected?.id==='main'&&!viewingAxis&&radius<160:Math.hypot(walkCam.position.x-campusAxis.origin.x,walkCam.position.z-campusAxis.origin.z)<82;
     const columnCenter=campusAxis.at(campusAxis.colonnade);
     const nearColumn=mode==='orbit'?selected?.id==='main'&&detailFocus==='colonnade':Math.hypot(walkCam.position.x-columnCenter.x,walkCam.position.z-columnCenter.z)<21;
@@ -750,7 +765,10 @@ function init(T, PointerLockControls) {
     const activeCamera=mode==='orbit'?orbitCam:walkCam;
     const fit=mode==='orbit'?fitDistance():1;
     if(campusTrees.update(activeCamera.position,reduceMotion.matches?0:now/1000)) rendering.invalidateShadows();
-    weather.update(elapsed,activeCamera,detailArea,mode,{near:mode==='orbit'?490*fit:285,far:mode==='orbit'?1560*fit:1100});
+    weather.update(elapsed,activeCamera,detailArea,mode,{
+      near:mode==='orbit'?Math.max(490,radius+170)*fit:285,
+      far:mode==='orbit'?Math.max(1560,radius+850)*fit:1100
+    });
     rendering.render(activeCamera,detailArea);
     requestAnimationFrame(frame);
   }

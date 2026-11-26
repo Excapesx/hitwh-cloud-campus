@@ -1,23 +1,30 @@
-import { axisTreeSites, buildings, campusAxis, displayLayout, height, inside, lakes, outline, world } from './campus-data.js';
+import { axisTreeSites, buildings, campusAxis, displayLayout, height, inside, lakes, outline } from './campus-data.js';
+import { footprintBounds } from './footprint.js';
 import { distanceToRoad } from './model.js';
 
 const streetForms = {
   '南门中轴路': 'plane',
-  '南门道路': 'plane',
+  '桃苑南路': 'plane',
   '西门道路': 'plane',
   '体育场西路': 'plane',
-  '体育场东路': 'plane',
-  '体育场南路': 'plane',
-  '主楼前路': 'avenue',
-  '主楼东路': 'plane',
-  '教学区道路': 'avenue',
+  '桃苑北路': 'plane',
+  '主楼环路': 'avenue',
+  '远遥路': 'plane',
+  '槐云路': 'avenue',
+  '学苑路': 'avenue',
+  '学堂路': 'avenue',
+  '湖西路': 'plane',
+  '湖东路': 'plane',
+  '科苑环路': 'courtyard',
+  '西南支路': 'plane',
   '学子路': 'avenue',
   '学子林北路': 'avenue',
   '东侧道路': 'avenue',
   '中区道路': 'avenue',
   '生活区道路': 'courtyard',
   '环山路': 'pine',
-  '西侧道路': 'pine'
+  '福山路': 'pine',
+  '滨海接线': 'pine'
 };
 const streetSizes = {plane: 6.8, avenue: 6.6, courtyard: 5.3, pine: 5.8};
 
@@ -32,10 +39,6 @@ function closeToLine(x, z, line, offset) {
   return x > Math.min(a.x, b.x) - margin && x < Math.max(a.x, b.x) + margin &&
     z > Math.min(a.z, b.z) - margin && z < Math.max(a.z, b.z) + margin &&
     distanceToRoad(x, z, line) < margin;
-}
-
-function groundArea(x, z, w, d) {
-  return {minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2};
 }
 
 function inArea(x, z, area, margin = 0) {
@@ -54,17 +57,11 @@ export function plantCampusTrees(T, models, {roads, walkways, colliders, landmar
   const foliageSites = [];
   const mapRoads = roads.flatMap(segments);
   const walkwayLines = walkways.flatMap(segments);
-  const lakeAreas = lakes.map(lake => {
-    const points = lake.points.map(point => world(...point));
-    return {
-      minX: Math.min(...points.map(p => p.x)), maxX: Math.max(...points.map(p => p.x)),
-      minZ: Math.min(...points.map(p => p.z)), maxZ: Math.max(...points.map(p => p.z))
-    };
-  });
+  const lakeAreas = lakes;
   const courts = buildings.filter(b => ['stadium', 'court'].includes(b.shape) || b.id === 'racing');
-  const plantingAreas = [...lakeAreas, ...courts.map(b => groundArea(b.x, b.z, b.w, b.d))];
+  const plantingAreas = [...lakeAreas, ...courts.map(footprintBounds)];
   const buildingAreas = landmarks.filter(entry => entry.spec?.kind !== 'sport' && entry.spec?.kind !== 'gate')
-    .flatMap(entry => entry.faces.map(({x, z, w, d}) => groundArea(x, z, w, d)));
+    .flatMap(entry => entry.faces.map(footprintBounds));
   // Use the built model's solid envelopes, including photo-model wings and columns.
   const solids = [...colliders];
   for (const entry of landmarks) {
@@ -72,7 +69,7 @@ export function plantCampusTrees(T, models, {roads, walkways, colliders, landmar
     for (const face of entry.faces) {
       const minY = height(face.x, face.z) - .1;
       const maxY = Math.max(minY + 1, face.top ?? entry.top);
-      solids.push({...groundArea(face.x, face.z, face.w, face.d), minY, maxY});
+      solids.push({...footprintBounds(face), minY, maxY});
     }
   }
   const minX = Math.min(...outline.map(p => p.x));

@@ -1,35 +1,36 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { surfaceMaterial } from './realism.js';
+import { sitePoint } from './footprint.js';
 
-// The front directions follow the traced roads and entrances. Photo proportions
-// are approximate and are kept within each site's existing map envelope.
+// Site rotation and dimensions are defined in campus-plan.js. Photo proportions
+// supply the façade details within those footprints.
 export const photoBuildings = {
-  library: { yaw:-Math.PI/2, detail:'外倾椭圆窗墙、宽台阶、屋顶放射状玻璃天窗和蓝绿檐口灯' },
-  research1: { yaw:Math.PI, detail:'浅色中央穹顶、环窗鼓座、立柱与两翼顶层拱窗' },
-  gong: { yaw:0, detail:'红色圆顶与小塔、三角山花、绿色玻璃和柱廊阳台' },
-  ning: { yaw:Math.PI/2, detail:'门式外框、蓝色采光顶、内院及内退玻璃幕墙' },
-  zhi: { yaw:Math.PI/2, detail:'宁学楼下的暖红色外挑体量和玻璃入口' },
-  incubator: { yaw:Math.PI/2, detail:'浅黄色多翼立面、白色竖饰与山花、灰石拱券基座' },
-  activity: { yaw:0, detail:'红褐色大门框、外侧斜墙和内院弧形玻璃门厅' },
-  gym: { yaw:0, detail:'玫砖红色顶部横梁、分格饰板、白色玻璃门厅和竖向窄窗' },
-  ming: { yaw:Math.PI, detail:'红色双翼、中央弧形玻璃门厅、白色横向腰线和入口顶棚桁架' },
-  xuezi: { yaw:-Math.PI/2, detail:'蓝玻璃楼梯塔、通高门厅、多级宽台阶、便民文创亭、米黄侧翼与砖红基座' },
-  xueyuan: { yaw:0, detail:'双侧阶梯、深挑门廊、圆柱和青绿色楼梯雨棚' },
-  store: { yaw:0, detail:'低层石材立面、拱形展窗、叠层檐口和玻璃门' },
-  d5A: { yaw:0, detail:'浅色端墙、四列拱顶窗、中央阳台和门廊' },
-  d6A: { yaw:0, detail:'暖黄色立面、粗凿石基座、通高壁柱网格、深色窗格、三角山花与修剪绿篱' },
-  d6B: { yaw:0, detail:'暖黄色立面、粗凿石基座、通高壁柱网格与深色窗格' },
-  d8: { yaw:Math.PI/2, detail:'橙色端墙、白色横带、连续窗格和内凹连接翼' },
-  d10: { yaw:-Math.PI/2, detail:'红色双翼、通高玻璃竖带和朝海弧形门厅' },
-  d11: { yaw:Math.PI/2, detail:'红色双翼、通高玻璃竖带和与 10 公寓相向的弧形门厅' },
-  d12: { yaw:-Math.PI/2, detail:'浅黄色双翼、深红基座、顶层拱窗和竹贤书院门厅' },
-  d13A: { yaw:0, detail:'13 层条形宿舍楼、米白色通高竖肋和灰色窗带' },
-  d13B: { yaw:0, detail:'13 层条形宿舍楼、米白色通高竖肋和灰色窗带' },
-  d14A: { yaw:0, detail:'白色竖向格栅、深灰基座和抬高的平台' },
-  d14B: { yaw:0, detail:'白色竖向格栅、深灰基座和抬高的平台' },
-  d14C: { yaw:0, detail:'白色竖向格栅、深灰基座和抬高的平台' },
-  international: { yaw:-Math.PI/2, detail:'淡黄色宿舍翼楼、红棕色石材基座、顶层拱窗和侧边低楼' },
-  water: { yaw:Math.PI, detail:'灰色低层实验厂房、浅色山墙、水平腰线和细框窗洞' },
+  library: { detail:'外倾椭圆窗墙、宽台阶、屋顶放射状玻璃天窗和蓝绿檐口灯' },
+  research1: { detail:'浅色中央穹顶、环窗鼓座、立柱与两翼顶层拱窗' },
+  gong: { detail:'红色圆顶与小塔、三角山花、绿色玻璃和柱廊阳台' },
+  ning: { detail:'门式外框、蓝色采光顶、内院及内退玻璃幕墙' },
+  zhi: { detail:'宁学楼下的暖红色外挑体量和玻璃入口' },
+  incubator: { detail:'浅黄色多翼立面、白色竖饰与山花、灰石拱券基座' },
+  activity: { detail:'红褐色大门框、外侧斜墙和内院弧形玻璃门厅' },
+  gym: { detail:'玫砖红色顶部横梁、分格饰板、白色玻璃门厅和竖向窄窗' },
+  ming: { detail:'红色双翼、中央弧形玻璃门厅、白色横向腰线和入口顶棚桁架' },
+  xuezi: { detail:'蓝玻璃楼梯塔、通高门厅、多级宽台阶、便民文创亭、米黄侧翼与砖红基座' },
+  xueyuan: { detail:'双侧阶梯、深挑门廊、圆柱和青绿色楼梯雨棚' },
+  store: { detail:'低层石材立面、拱形展窗、叠层檐口和玻璃门' },
+  d5A: { detail:'浅色端墙、四列拱顶窗、中央阳台和门廊' },
+  d6A: { detail:'暖黄色立面、粗凿石基座、通高壁柱网格、深色窗格、三角山花与修剪绿篱' },
+  d6B: { detail:'暖黄色立面、粗凿石基座、通高壁柱网格与深色窗格' },
+  d8: { detail:'橙色端墙、白色横带、连续窗格和内凹连接翼' },
+  d10: { detail:'红色双翼、通高玻璃竖带和朝海弧形门厅' },
+  d11: { detail:'红色双翼、通高玻璃竖带和与 10 公寓相向的弧形门厅' },
+  d12: { detail:'浅黄色双翼、深红基座、顶层拱窗和竹贤书院门厅' },
+  d13A: { detail:'13 层条形宿舍楼、米白色通高竖肋和灰色窗带' },
+  d13B: { detail:'13 层条形宿舍楼、米白色通高竖肋和灰色窗带' },
+  d14A: { detail:'白色竖向格栅、深灰基座和抬高的平台' },
+  d14B: { detail:'白色竖向格栅、深灰基座和抬高的平台' },
+  d14C: { detail:'白色竖向格栅、深灰基座和抬高的平台' },
+  international: { detail:'淡黄色宿舍翼楼、红棕色石材基座、顶层拱窗和侧边低楼' },
+  water: { detail:'灰色低层实验厂房、浅色山墙、水平腰线和细框窗洞' },
 };
 
 export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
@@ -73,26 +74,24 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
 
   return function build(entry,ground) {
     const {id,x,z,spec}=entry;
-    const {yaw}=photoBuildings[id];
-    const crosswise=Math.abs(Math.sin(yaw))>.5;
-    const w=crosswise?spec.d:spec.w,d=crosswise?spec.w:spec.d;
+    const {yaw,w,d}=spec;
     const buckets=new Map();
-    const worldPoint=(u,v)=>({x:x+u*Math.cos(yaw)+v*Math.sin(yaw),z:z-u*Math.sin(yaw)+v*Math.cos(yaw)});
+    const worldPoint=(u,v)=>sitePoint(x,z,yaw,u,v);
     function emit(geometry,material) {
       if(!buckets.has(material))buckets.set(material,[]);
       const part=geometry.index?geometry.toNonIndexed():geometry;
       if(part!==geometry)geometry.dispose();
       buckets.get(material).push(part);
     }
-    function bounds(u,y,v,a,h,b) {
-      const p=worldPoint(u,v),width=crosswise?b:a,depth=crosswise?a:b;
-      addCollider(p.x,ground+y,p.z,width,h,depth);
-      entry.faces.push({x:p.x,z:p.z,w:width,d:depth,top:ground+y+h});
+    function bounds(u,y,v,a,h,b,angle=0) {
+      const p=worldPoint(u,v),heading=yaw+angle;
+      addCollider(p.x,ground+y,p.z,a,h,b,heading);
+      entry.faces.push({x:p.x,z:p.z,w:a,d:b,yaw:heading,top:ground+y+h});
     }
     function box(u,y,v,a,h,b,mat=materials.ivory,solid=false,angle=0) {
       const geo=new T.BoxGeometry(a,h,b);geo.rotateY(angle);geo.translate(u,y+h/2,v);
       emit(geo,mat);
-      if(solid)bounds(u,y,v,a,h,b);
+      if(solid)bounds(u,y,v,a,h,b,angle);
       entry.top=Math.max(entry.top,ground+y+h);
     }
     function drum(u,y,v,rx,rz,h,mat,top=1) {
@@ -121,26 +120,35 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
       const geo=new T.ShapeGeometry(s,16);geo.rotateY(angle);geo.translate(u,y,v);emit(geo,mat);
       box(u,y-.12,v,width+.24,.12,.17,materials.ivory,false,angle);
     }
-    function mass(u,v,a,b,h,wall,{base=materials.gray,rows=4,front=true,columns=Math.max(3,Math.round(a/2.65)),arches=false,stripes=false,glass=materials.blue}={}) {
-      box(u,0,v,a,h,b,wall,true);
-      box(u,0,v,a+.13,.65,b+.13,base);
-      box(u,h-.24,v,a+.35,.35,b+.35,materials.ivory);
-      box(u,h+.12,v,a-.35,.09,b-.35,materials.roof);
+    function mass(u,v,a,b,h,wall,{base=materials.gray,rows=4,front=true,columns=Math.max(3,Math.round(a/2.65)),arches=false,stripes=false,glass=materials.blue,angle=0}={}) {
+      const put=(du,y,dv,w,hh,d,mat,solid=false)=>{
+        const p=sitePoint(u,v,angle,du,dv);
+        box(p.x,y,p.z,w,hh,d,mat,solid,angle);
+      };
+      const face=(du,y,dv,w,hh,turn,arched=false)=>{
+        const p=sitePoint(u,v,angle,du,dv);
+        if(arched)arch(p.x,y,p.z,w,hh,glass,angle+turn);
+        else panel(p.x,y,p.z,w,hh,glass,angle+turn);
+      };
+      put(0,0,0,a,h,b,wall,true);
+      put(0,0,0,a+.13,.65,b+.13,base);
+      put(0,h-.24,0,a+.35,.35,b+.35,materials.ivory);
+      put(0,h+.12,0,a-.35,.09,b-.35,materials.roof);
       const pitch=(h-.85)/rows;
       for(let row=0;row<rows;row++){
         const y=.75+row*pitch;
-        if(stripes&&row)box(u,y-.19,v,a+.1,.13,b+.1,materials.ivory);
+        if(stripes&&row)put(0,y-.19,0,a+.1,.13,b+.1,materials.ivory);
         for(let i=0;i<columns;i++){
-          const px=u+((i+.5)/columns-.5)*a*.91;
+          const du=((i+.5)/columns-.5)*a*.91;
           if(front){
-            if(arches&&row===rows-1)arch(px,y,v+b/2+.085,a*.55/columns,pitch*.73,glass);
-            else panel(px,y,v+b/2+.04,a*.55/columns,pitch*.65,glass);
+            const arched=arches&&row===rows-1;
+            face(du,y,b/2+(arched?.085:.04),a*.55/columns,pitch*(arched?.73:.65),0,arched);
           }
-          panel(px,y,v-b/2-.04,a*.53/columns,pitch*.62,glass,Math.PI);
+          face(du,y,-b/2-.04,a*.53/columns,pitch*.62,Math.PI);
         }
         const sideColumns=Math.max(2,Math.round(b/3.4));
         for(const side of [-1,1])for(let i=0;i<sideColumns;i++){
-          panel(u+side*(a/2+.04),y,v+((i+.5)/sideColumns-.5)*b*.9,b*.54/sideColumns,pitch*.63,glass,side*Math.PI/2);
+          face(side*(a/2+.04),y,((i+.5)/sideColumns-.5)*b*.9,b*.54/sideColumns,pitch*.63,side*Math.PI/2);
         }
       }
     }
@@ -300,10 +308,11 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
         break;
       }
       case 'research1': {
-        const wing=w*.25,front=d*.29;
-        mass(0,-d*.16,w*.95,d*.36,15,M.cream,{rows:5});
-        for(const s of [-1,1])mass(s*w*.35,d*.14,wing,d*.68,14,M.cream,{rows:5,arches:true});
-        mass(0,d*.05,w*.46,d*.49,17.8,M.cream,{rows:5,front:false});
+        const front=d*.29;
+        for(const side of [-1,1])for(const end of [-1,1]){
+          mass(side*w*.265,end*d*.32,w*.47,d*.25,14,M.cream,{rows:5,arches:true,angle:side*end*.22});
+        }
+        mass(0,0,w*.40,d*.74,17.8,M.cream,{rows:5,front:false});
         const r=w*.157;
         drum(0,17.8,d*.08,r*1.07,r*1.07,2.8,M.ivory);
         for(let i=0;i<24;i++){
@@ -322,9 +331,9 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
       }
       case 'gong': {
         const face=d*.29;
-        mass(0,-d*.05,w*.97,d*.68,10.6,M.ivory,{rows:3,front:false});
+        mass(0,-d*.18,w*.31,d*.62,10.6,M.ivory,{rows:3,front:false});
         for(const s of [-1,1]){
-          mass(s*w*.34,d*.04,w*.28,d*.66,9.6,M.ivory,{rows:3,glass:M.green,arches:true});
+          mass(s*w*.27,d*.12,w*.42,d*.34,9.6,M.ivory,{rows:3,glass:M.green,arches:true,angle:-s*.48});
           drum(s*w*.19,10.1,face-.8,.87,.87,1.35,M.ivory);
           dome(s*w*.19,11.45,face-.8,.94,1.07,M.red);
         }
@@ -358,6 +367,9 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
         for(let i=-6;i<=6;i++)box(i*w*.043,13.26,.5,.055,.07,d*.45,M.ivory);
         for(let i=-6;i<=6;i++)box(0,13.26,.5+i*d*.033,w*.56,.07,.055,M.ivory);
         stairs(0,d*.363,w*.62,4.7,.75,6);
+        mass(w*.31,-d*.11,w*.33,d*.36,10.8,M.ivory,{rows:3});
+        drum(w*.30,10.8,-d*.10,d*.133,d*.133,1.10,M.ivory);
+        drum(w*.30,11.90,-d*.10,d*.122,d*.122,.17,roofGlass);
         break;
       }
       case 'zhi': {
@@ -429,7 +441,8 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
         // 明学楼的照片视角能看到两侧红色楼翼、中央弧形门厅和顶部轻型雨棚。
         // 保留完整玻璃竖带，让从运动场方向看过去时建筑识别度足够高。
         const front=d*.43;
-        mass(0,-d*.34,w*.94,d*.37,13.9,M.rose,{rows:4,columns:10,base:M.brick,stripes:true});
+        mass(0,-d*.20,w*.94,d*.40,13.9,M.rose,{rows:4,columns:10,base:M.brick,stripes:true});
+        mass(0,-d*.39,w*.21,d*.27,14.65,M.rose,{rows:4,columns:3,base:M.brick,stripes:true});
         for(const s of [-1,1]) {
           const u=s*w*.34;
           mass(u,-d*.02,w*.28,d*.86,14.65,M.rose,{rows:4,columns:4,base:M.brick,stripes:true,front:false});
@@ -466,8 +479,8 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
       }
       case 'xuezi': {
         const v=d*.43;
-        mass(0,-d*.08,w*.96,d*.85,12.7,M.ivory,{rows:4,front:false,base:M.red});
-        mass(w*.33,0,w*.29,d*.95,14.1,M.ivory,{rows:4,columns:3,base:M.red});
+        mass(-w*.16,-d*.15,w*.64,d*.66,12.7,M.ivory,{rows:4,front:false,base:M.red});
+        mass(w*.29,-d*.03,w*.35,d*.88,14.1,M.ivory,{rows:4,columns:3,base:M.red});
         box(-w*.34,0,v-1,w*.25,15.2,2.8,M.blue,true);
         box(-w*.034,0,v-1,w*.42,12.65,2.4,M.blue,true);
         for(let row=1;row<=5;row++){
@@ -508,14 +521,15 @@ export function createPhotoBuildingKit({T,mesh,registerMesh,addCollider}) {
         break;
       }
       case 'd5A': {
-        const v=d*.45;
-        mass(0,0,w*.95,d*.91,16.6,M.cream,{rows:6,columns:4,arches:true});
-        pediment(0,16.65,v,w*.86,1.02);
+        const v=d*.42,u=-w*.11;
+        mass(u,d*.20,w*.77,d*.45,16.6,M.cream,{rows:6,columns:6,arches:true});
+        mass(w*.31,-d*.09,w*.41,d*.65,16.6,M.cream,{rows:6,columns:5,angle:.48});
+        pediment(u,16.65,v,w*.68,1.02);
         for(let i=0;i<4;i++){
-          box(0,3.55+2.72*i,v+.42,w*.41,.26,1.45,M.ivory);
-          for(let j=-7;j<=7;j++)box(j*w*.027,3.81+2.72*i,v+1.09,.08,.48,.11,M.ivory);
+          box(u,3.55+2.72*i,v+.42,w*.41,.26,1.45,M.ivory);
+          for(let j=-7;j<=7;j++)box(u+j*w*.027,3.81+2.72*i,v+1.09,.08,.48,.11,M.ivory);
         }
-        porch(0,v+.13,w*.48,3.7);
+        porch(u,v+.13,w*.48,3.7);
         break;
       }
       case 'd8': {

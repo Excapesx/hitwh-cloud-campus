@@ -1,15 +1,21 @@
-import { world, outline, inside, height, roadLines, paths, buildings, lakes } from './campus-data.js';
+import { terrainOutline, coastLine, height, roadLines, paths, buildings, lakes } from './campus-data.js';
+import { sitePoint } from './footprint.js';
 import { buildSouthGate } from './south-gate.js';
 import { buildMainAxis } from './main-axis.js';
 import { createPhotoBuildingKit, photoBuildings } from './photo-buildings.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export function buildTerrain({T,mesh,box,m}) {
+  const outline=terrainOutline;
   const shape=new T.Shape(outline.map(p=>new T.Vector2(p.x,-p.z)));
   const slab=new T.ExtrudeGeometry(shape,{depth:5,bevelEnabled:false});
   slab.rotateX(-Math.PI/2);
   mesh(slab,m.deepGrass,0,-5.15,0,false);
-  const geo=new T.PlaneGeometry(490,680,122,170); geo.rotateX(-Math.PI/2); geo.translate(-10,0,0);
+  const minX=Math.min(...outline.map(p=>p.x)),maxX=Math.max(...outline.map(p=>p.x));
+  const minZ=Math.min(...outline.map(p=>p.z)),maxZ=Math.max(...outline.map(p=>p.z));
+  const w=maxX-minX,d=maxZ-minZ;
+  const geo=new T.PlaneGeometry(w,d,Math.ceil(w/3.8),Math.ceil(d/3.8));
+  geo.rotateX(-Math.PI/2).translate((minX+maxX)/2,0,(minZ+maxZ)/2);
   const p=geo.attributes.position, colors=new Float32Array(p.count*3), color=new T.Color();
   const lowGrass=new T.Color(0xfffdf4), slopeGrass=new T.Color(0xdce6d8);
   for(let i=0;i<p.count;i++) {
@@ -18,9 +24,19 @@ export function buildTerrain({T,mesh,box,m}) {
   }
   const indices=[];
   const original=geo.index.array;
+  const included=new Uint8Array(p.count);
+  for(let k=0;k<p.count;k++){
+    const x=p.getX(k),z=p.getZ(k);
+    let inside=false;
+    for(let i=0,j=outline.length-1;i<outline.length;j=i++){
+      const a=outline[i],b=outline[j];
+      if((a.z>z)!==(b.z>z)&&x<(b.x-a.x)*(z-a.z)/(b.z-a.z)+a.x)inside=!inside;
+    }
+    included[k]=inside;
+  }
   for(let i=0;i<original.length;i+=3) {
     const ids=[original[i],original[i+1],original[i+2]];
-    if(ids.every(j=>inside(p.getX(j),p.getZ(j)))) indices.push(...ids);
+    if(ids.every(j=>included[j])) indices.push(...ids);
   }
   geo.setIndex(indices); geo.setAttribute('color',new T.BufferAttribute(colors,3)); geo.computeVertexNormals();
   mesh(geo,m.terrain,0,.02,0,false);
@@ -39,8 +55,7 @@ export function buildTerrain({T,mesh,box,m}) {
   // 海面在图面西侧；没有经纬度与测绘基准，不用场景尺寸推算距离。
   const outside=new T.PlaneGeometry(3000,3000);outside.rotateX(-Math.PI/2);
   mesh(outside,new T.MeshStandardMaterial({color:0xc8d0b9,roughness:1}),0,skirtBottom-.02,0,false);
-  const coastPixels=[[56,-250],[56,143],[112,173],[173,231],[200,305],[218,372],[252,401],[230,474],[218,549],[208,640],[148,724],[80,810],[-15,936],[-300,1400],[-600,2100]];
-  const curve=new T.SplineCurve(coastPixels.map(([x,y])=>{const p=world(x,y);return new T.Vector2(p.x,-p.z);}));
+  const curve=new T.SplineCurve(coastLine.map(p=>new T.Vector2(p.x,-p.z)));
   const coast=curve.getPoints(160),sea=new T.Shape();
   sea.moveTo(-1600,1200);sea.lineTo(coast[0].x,coast[0].y);coast.forEach(p=>sea.lineTo(p.x,p.y));sea.lineTo(-1600,-1400);sea.closePath();
   const seaGeo=new T.ShapeGeometry(sea);seaGeo.rotateX(-Math.PI/2);mesh(seaGeo,m.water,0,-5.2,0,false);
@@ -49,16 +64,14 @@ export function buildTerrain({T,mesh,box,m}) {
 export function buildCampus(c) {
   const {T,m,mesh,box,disc,paving,landmark,registerMesh,block,piece,hip,addCollider}=c;
   const roads=[];
-  function footprintGround(x,z,w,d) {
-    const halfW=w/2,halfD=d/2;
-    return Math.min(
-      height(x-halfW,z-halfD),height(x+halfW,z-halfD),
-      height(x-halfW,z+halfD),height(x+halfW,z+halfD)
-    );
+  function footprintGround(x,z,w,d,yaw) {
+    return Math.min(...[-1,1].flatMap(u=>[-1,1].map(v=>{
+      const corner=sitePoint(x,z,yaw,u*w/2,v*d/2);
+      return height(corner.x,corner.z);
+    })));
   }
   function ribbon(points,width,material,lift=.24,offset=0) {
-    const raw=points.map(([x,y])=>world(x,y));
-    const curve=new T.CatmullRomCurve3(raw.map(p=>new T.Vector3(p.x,0,p.z)),false,'centripetal');
+    const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(p.x,0,p.z)),false,'centripetal');
     const count=Math.max(8,Math.ceil(curve.getLength()/2.5)), positions=[];
     for(let i=0;i<=count;i++) {
       const p=curve.getPoint(i/count),tan=curve.getTangent(i/count),normal=new T.Vector3(-tan.z,0,tan.x).normalize();
@@ -86,7 +99,7 @@ export function buildCampus(c) {
   }
   // 南门照片里的主路有连续浅色人行带。把同样的窄铺装延伸到环山路、
   // 学子路和体育场周边，路缘与坡面之间形成清晰的步行尺度。
-  const sidewalkRows=new Set(['环山路','学子路','学子林北路','东侧道路','主楼东路','体育场东路','体育场南路','南门道路']);
+  const sidewalkRows=new Set(['环山路','学子路','学子林北路','东侧道路','远遥路','学苑路','桃苑北路','桃苑南路','槐云路']);
   for(const line of roadLines) {
     if(!sidewalkRows.has(line.name))continue;
     const sidewalkWidth=line.width>5?1.25:1.05;
@@ -95,20 +108,20 @@ export function buildCampus(c) {
     ribbon(line.points,sidewalkWidth,m.path,.37,-offset);
   }
   const walkways=paths.map(path=>({width:1.45,curve:ribbon(path,1.45,m.path,.34)}));
-  function lake(points,smooth=false) {
-    let polygon=points.map(([x,y])=>{const p=world(x,y);return new T.Vector2(p.x,-p.z);});
-    if(smooth){const curve=new T.CatmullRomCurve3(polygon.map(p=>new T.Vector3(p.x,0,-p.y)),true,'centripetal');polygon=curve.getPoints(100).map(p=>new T.Vector2(p.x,-p.z));
-      mesh(new T.TubeGeometry(curve,100,.13,6,true),m.stone,0,.46,0,false);}
+  function lake({points,level}) {
+    const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(p.x,0,p.z)),true,'centripetal');
+    const polygon=curve.getPoints(100).slice(0,-1).map(p=>new T.Vector2(p.x,-p.z));
+    mesh(new T.TubeGeometry(curve,100,.16,6,true),m.stone,0,level+.095,0,false);
     const shape=new T.Shape(polygon);
-    const geo=new T.ShapeGeometry(shape,20);geo.rotateX(-Math.PI/2);mesh(geo,m.water,0,.35,0,false);
+    const geo=new T.ShapeGeometry(shape,20);geo.rotateX(-Math.PI/2);mesh(geo,m.water,0,level,0,false);
   }
-  lakes.forEach(l=>lake(l.points,l.smooth));
+  lakes.forEach(lake);
 
   // 学子餐厅后方的照片可见一条红砖步道和连续白栏杆。它们与坡面共用
   // height(x,z)，栏杆分段贴地，避免在起伏草坡上出现悬空的直线。
-  const hillWalk=[[570,790],[612,762],[664,746],[720,748],[778,763],[838,778],[900,783]];
+  const hillWalk=[{x:-8,z:-44},{x:3,z:-41},{x:15,z:-36},{x:25,z:-30},{x:34,z:-24}];
   walkways.push({width:1.9,curve:ribbon(hillWalk,1.9,m.path,.32)});
-  const fencePoints=[[600,735],[670,715],[745,720],[820,742],[900,770]].map(([px,pz])=>world(px,pz));
+  const fencePoints=hillWalk.map(p=>({x:p.x,z:p.z+1.2}));
   function beamBetween(a,b,width,material) {
     const start=new T.Vector3(a.x,a.y,a.z),end=new T.Vector3(b.x,b.y,b.z);
     const vector=end.clone().sub(start),mid=start.clone().add(end).multiplyScalar(.5);
@@ -130,14 +143,14 @@ export function buildCampus(c) {
   const buildPhotoBuilding=createPhotoBuildingKit(c);
   const fieldEntries=[];
   for(const spec of buildings) {
-    const {name,id,x,z,w,d,floors,kind,shape,minor}=spec;
+    const {name,id,x,z,w,d,yaw,floors,kind,shape,minor,wings}=spec;
     const photo=photoBuildings[id];
-    const desc=photo?`按实景照片补充${photo.detail}。位置参照校园地图，朝向与比例为场景估计。`:id==='stadium'?'按照片补充西侧有顶看台、屋架和对侧露天看台，保留跑道与球场。':id==='main'?'依据实景与航拍照片细化：正面与两翼前庭朝向南门，塔冠、窗框、巨柱和入口雨棚采用独立构件。主楼、双排弧形柱廊、校训石与南门保持同一中轴；比例为照片估计。':id==='doorSouth'?'依据三张实景照片细化：中央大拱、两侧门廊、槽纹立柱、叠层檐口与校名牌匾。铁艺门保持敞开，可从门前走入校园；尺寸为照片估计。':kind==='gate'?'地图标注的校园出入口。门头体量为示意，请以现场开放情况为准。':
-      name+'的位置依据所提供的校园地图描绘，建筑层数、外立面与高度为程序化示意。';
+    const desc=photo?`立面参考实景照片，包含${photo.detail}。位置和占地参考卫星图与校园总平面图。`:id==='stadium'?'跑道和球场按卫星图调整比例，西侧有顶看台和对侧露天看台参考实景照片。':id==='main'?'主楼的横向楼体、西配楼和后翼按卫星图校准。塔冠、立柱和雨棚参考实拍。主楼、弧形柱廊、校训石与南门沿同一条轴线布置。':id==='doorSouth'?'门体参考实景照片，保留中央大拱、两侧门廊、校名牌匾和敞开的铁艺门。':kind==='gate'?'校园总平面图标注的出入口。':
+      name+'的位置和占地参考卫星图与校园总平面图，楼层与立面为示意。';
     const detail=id==='racing'?'按汽车训练场照片补充深色铺装、透空绿围网和侧边入口。':desc;
     const entry=landmark(name,id,detail,x,z,kind,['main','library','stadium','doorSouth'].includes(id)?0:minor?3:1);
     Object.assign(entry,{id,spec});
-    const y=(shape==='main'||kind==='gate')?height(x,z):footprintGround(x,z,w,d);
+    const y=(shape==='main'||kind==='gate')?height(x,z):footprintGround(x,z,w,d,yaw);
     const material=kind==='life'?m.dorm:kind==='sport'?m.blue:m.light;
     const h=floors*2.9;
     if(id==='doorSouth') {
@@ -146,39 +159,54 @@ export function buildCampus(c) {
       buildMainAxis(c,entry);
     } else if(photo) {
       buildPhotoBuilding(entry,y);
-    } else if(shape==='ning' || shape==='courtyard' || shape==='research') {
-      const wing=Math.min(8,w*.22);
-      block(entry,x,y,z-d/2+wing/2,w,wing,h,floors,material);
-      block(entry,x,y,z+d/2-wing/2,w,wing,h,floors,material);
-      block(entry,x-w/2+wing/2,y,z,wing,d,h,floors,material);
-      if(shape!=='ning') block(entry,x+w/2-wing/2,y,z,wing,d*.78,h,floors,material);
-      if(shape==='research') block(entry,x,y,z,w*.4,d*.3,h*.65,3,m.blue);
+    } else if(wings) {
+      for(const [u,v,width,depth] of wings){
+        const p=sitePoint(x,z,yaw,u,v);
+        block(entry,p.x,y,p.z,width,depth,h,floors,material,.45,yaw);
+      }
     } else if(shape==='stadium') {
-      function oval(rx,rz,material,lift) {
-        const geo=new T.CircleGeometry(1,90);geo.rotateX(-Math.PI/2);
-        const obj=registerMesh(mesh(geo,material,x,y+lift,z,false),entry);obj.scale.set(rx,1,rz);return obj;
+      function circuit(radius,reach) {
+        const straight=reach-radius;
+        const ring=new T.Shape();
+        ring.moveTo(radius,straight);
+        ring.absarc(0,straight,radius,0,Math.PI,false);
+        ring.lineTo(-radius,-straight);
+        ring.absarc(0,-straight,radius,Math.PI,Math.PI*2,false);
+        ring.closePath();
+        return ring;
       }
-      oval(w*.56,d*.55,m.stone,.13);oval(w/2,d/2,m.track,.2);
+      function trackSurface(rx,rz,material,lift) {
+        const geo=new T.ShapeGeometry(circuit(rx,rz),42).rotateX(-Math.PI/2);
+        registerMesh(mesh(geo,material,x,y+lift,z,false),entry);
+      }
+      trackSurface(w*.54,d*.535,m.stone,.13);
+      trackSurface(w/2,d/2,m.track,.20);
       for(let i=0;i<7;i++) {
-        const pts=[];for(let j=0;j<=100;j++){const a=j/100*Math.PI*2;pts.push(new T.Vector3(x+Math.cos(a)*(w/2-i*.65),y+.24,z+Math.sin(a)*(d/2-i*.7)));}
-        mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),100,.045,3,false),m.line,0,0,0,false);
+        const lane=circuit(w/2-.48-i*.56,d/2-.48-i*.56);
+        for(const segment of lane.curves) {
+          const count=segment.isEllipseCurve?32:1;
+          const line=segment.getPoints(count).map(p=>new T.Vector3(x+p.x,y+.24,z-p.y));
+          const curve=count>1?new T.CatmullRomCurve3(line):new T.LineCurve3(line[0],line[1]);
+          mesh(new T.TubeGeometry(curve,count,.048,3,false),m.line,0,0,0,false);
+        }
       }
-      oval(w/2-5,d/2-7,m.grass,.27);
-      registerMesh(paving(x,z,w*.64,d*.66,m.pitch,.3),entry);
+      trackSurface(w/2-4.6,d/2-4.6,m.grass,.27);
+      const halfPitchW=w*.285,halfPitchD=d*.28;
+      registerMesh(paving(x,z,halfPitchW*2,halfPitchD*2,m.pitch,.3),entry);
       // 绿茵场线、球门和角旗让运动场从远处也能被识别成足球场。
-      for(const xx of [-1,1])paving(x+xx*w*.32,z,.16,d*.66,m.line,.35);
-      for(const zz of [-1,0,1])paving(x,z+zz*d*.33,w*.64,.16,m.line,.35);
+      for(const xx of [-1,1])paving(x+xx*halfPitchW,z,.16,halfPitchD*2,m.line,.35);
+      for(const zz of [-1,0,1])paving(x,z+zz*halfPitchD,halfPitchW*2,.16,m.line,.35);
       paving(x,z-d*.22,w*.19,.12,m.line,.36);paving(x,z+d*.22,w*.19,.12,m.line,.36);
       const ring=new T.RingGeometry(3.8,3.96,40);ring.rotateX(-Math.PI/2);mesh(ring,m.line,x,y+.37,z,false);
       for(const zz of [-1,1]) {
-        const postZ=z+zz*d*.33;
+        const postZ=z+zz*halfPitchD;
         for(const xx of [-1,1])box(x+xx*2,y+.35,postZ,.15,2.2,.15,m.line);
         box(x,y+2.55,postZ,4.2,.15,.15,m.line);
         box(x,y+1.55,postZ,4.2,.07,.07,m.line);
       }
       for(const [xx,zz] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
-        box(x+xx*w*.32,y+.34,z+zz*d*.33,.06,.62,.06,m.brass);
-        const flag=new T.ConeGeometry(.18,.26,4);flag.rotateZ(Math.PI/2);mesh(flag,m.seatRed,x+xx*w*.32+xx*.09,y+1.03,z+zz*d*.33,false);
+        box(x+xx*halfPitchW,y+.34,z+zz*halfPitchD,.06,.62,.06,m.brass);
+        const flag=new T.ConeGeometry(.18,.26,4);flag.rotateZ(Math.PI/2);mesh(flag,m.seatRed,x+xx*halfPitchW+xx*.09,y+1.03,z+zz*halfPitchD,false);
       }
       const standLength=d*.57,west=x-w*.485,east=x+w*.483;
       const seatRows=[[],[],[]];
@@ -226,7 +254,7 @@ export function buildCampus(c) {
       }
       entry.faces.push({x,z,w,d});entry.top=y+6.8;fieldEntries.push(entry);
     } else if(id==='racing') {
-      registerMesh(paving(x,z,w,d,m.asphalt,.18),entry);
+      registerMesh(paving(x,z,w,d,m.asphalt,.18,yaw),entry);
       const color=new T.MeshStandardMaterial({color:0x435c48,roughness:.82});
       const rails=[];
       function fence(a,b,length,alongX){
@@ -241,25 +269,35 @@ export function buildCampus(c) {
           const rail=new T.BoxGeometry(alongX?length:.026,.027,alongX?.026:length);
           rail.translate(a,.18+lift,b);rails.push(rail);
         }
-        addCollider(x+a,y+.18,z+b,alongX?length:thickness,fenceHeight,alongX?thickness:length);
+        const p=sitePoint(x,z,yaw,a,b);
+        addCollider(p.x,y+.18,p.z,alongX?length:thickness,fenceHeight,alongX?thickness:length,yaw);
       }
       for(const s of [-1,1])fence(0,s*(d/2-.18),w-.36,true);
       fence(w/2-.18,0,d-.36,false);
       const segment=(d-.36-3.4)/2;
       for(const s of [-1,1])fence(-w/2+.18,s*(1.7+segment/2),segment,false);
-      registerMesh(mesh(mergeGeometries(rails),color,x,y,z,false),entry);
+      registerMesh(mesh(mergeGeometries(rails).rotateY(yaw),color,x,y,z,false),entry);
       for(const rail of rails)rail.dispose();
-      entry.faces.push({x,z,w,d});entry.top=y+1.6;
+      entry.faces.push({x,z,w,d,yaw});entry.top=y+1.6;
     } else if(shape==='court') {
-      registerMesh(paving(x,z,w,d,m.blue,.18),entry);
-      for(const xx of [-1,1])paving(x+xx*(w/2-1),z,.17,d-2,m.line,.25);
-      for(const zz of [-1,0,1])paving(x,z+zz*(d/2-1),w-2,.17,m.line,.25);
-      entry.faces.push({x,z,w,d});entry.top=1;
+      registerMesh(paving(x,z,w,d,id==='football'?m.pitch:m.blue,.18,yaw),entry);
+      for(const xx of [-1,1]){
+        const p=sitePoint(x,z,yaw,xx*(w/2-1),0);
+        paving(p.x,p.z,.17,d-2,m.line,.25,yaw);
+      }
+      for(const zz of [-1,0,1]){
+        const p=sitePoint(x,z,yaw,0,zz*(d/2-1));
+        paving(p.x,p.z,w-2,.17,m.line,.25,yaw);
+      }
+      entry.faces.push({x,z,w,d,yaw});entry.top=y+.25;
     } else if(shape==='gate') {
       const alongX=w>d, span=alongX?w:d;
-      for(const s of [-1,1])piece(entry,x+(alongX?s*span/2:0),y,z+(alongX?0:s*span/2),1.7,5.2,1.7,m.light);
-      piece(entry,x,y+4,z,alongX?span+2:2,1.2,alongX?2:span+2,m.roof,{footprint:false});
-    } else block(entry,x,y,z,w,d,h,floors,material);
+      for(const s of [-1,1]){
+        const p=sitePoint(x,z,yaw,alongX?s*span/2:0,alongX?0:s*span/2);
+        piece(entry,p.x,y,p.z,1.2,3.8,1.2,m.light,{yaw});
+      }
+      piece(entry,x,y+3.2,z,alongX?span+1:1.5,.6,alongX?1.5:span+1,m.roof,{footprint:false,yaw});
+    } else block(entry,x,y,z,w,d,h,floors,material,minor?.72:.45,yaw);
   }
   return {field:fieldEntries[0],roads,walkways};
 }

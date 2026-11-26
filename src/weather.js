@@ -1,5 +1,6 @@
 import { defaultWeather, normalizeWeather, atmosphereFor, advanceTime, formatTime, weatherTypes } from './weather-state.js';
 import { height, campusAxis, gateScale, gatePoint, displayLayout } from './campus-data.js';
+import { inFootprint } from './footprint.js';
 
 const storageKey='hitwh-weather-v1';
 export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen}) {
@@ -63,7 +64,7 @@ export function createWeatherSystem(T,scene,rendering,{landmarks,unlock,onOpen})
   const roofs=landmarks.flatMap(e=>e.faces.filter(()=>e.kind!=='sport').map(f=>({...f,top:e.top})));
   function groundAt(x,z) {
     let y=height(x,z)+.2;
-    for(const roof of roofs)if(Math.abs(x-roof.x)<roof.w/2&&Math.abs(z-roof.z)<roof.d/2)y=Math.max(y,roof.top);
+    for(const roof of roofs)if(inFootprint(x,z,roof))y=Math.max(y,roof.top);
     return y;
   }
   function respawn(i,initial=false) {

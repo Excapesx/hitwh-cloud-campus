@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { world, campusAxis, gateScale, displayLayout } from './campus-data.js';
+import { campusAxis, gateScale, displayLayout } from './campus-data.js';
 
 // 世界坐标材质：细部尺度不随几何的 UV 展开或合批而改变；没有外部贴图请求。
 const surfaceGLSL=`
@@ -95,7 +95,7 @@ export function setupRealisticRendering(T,renderer,scene,compactRendering) {
   sun.shadow.mapSize.setScalar(compactRendering?1024:3072);sun.shadow.bias=-.000035;sun.shadow.normalBias=.025;sun.shadow.radius=2;
   sun.shadow.camera.near=10;sun.shadow.camera.far=900;
   const fill=new T.HemisphereLight(0xd1e5fb,0x716951,.35);scene.add(sun,sun.target,fill);
-  const target=new T.Vector3(),gate=world(841,1510);
+  const target=new T.Vector3(),gate=campusAxis.end;
   let detailed=null,cssWidth=1,cssHeight=1,composer=null,ao=null,renderPass=null;
   let atmosphere=null,appliedAtmosphere=null,environmentKey='',environmentAt=-Infinity,shadowDirty=false,lastShadowAt=-Infinity;
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
